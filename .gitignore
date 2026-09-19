@@ -1,0 +1,24 @@
+# MetaTrader 5 compiled output - never commit binaries
+*.ex5
+*.ex4
+*.mx5
+*.obj
+*.ilk
+*.pdb
+
+# MetaEditor / project scratch files
+*.mqproj.user
+*.lck
+/files/
+.cache/
+
+# Runtime artefacts produced by the EA on a real terminal
+MQL5/Files/XAU_AVG_PRO_*.csv
+MQL5/Files/XAU_AVG_PRO_*.log
+MQL5/Files/*.tmp
+
+# Python QA harness caches
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
