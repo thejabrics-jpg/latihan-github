@@ -31,7 +31,7 @@ private:
    string   m_vals[];
    int      m_errors;
 
-   int Find(const string key)
+   int Find(const string key) const
      {
       for(int i = 0; i < ArraySize(m_keys); i++)
          if(m_keys[i] == key)
@@ -107,14 +107,17 @@ public:
       while(!FileIsEnding(h))
         {
          string line = FileReadString(h);
-         line = StringTrimLeft(StringTrimRight(line));
+         StringTrimRight(line);
+         StringTrimLeft(line);
          if(StringLen(line) == 0 || StringGetCharacter(line, 0) == '#')
             continue;
          int p = StringFind(line, "=");
          if(p <= 0)
             continue;
-         string k = StringTrimRight(StringSubstr(line, 0, p));
-         string v = StringTrimLeft(StringSubstr(line, p + 1));
+         string k = StringSubstr(line, 0, p);
+         string v = StringSubstr(line, p + 1);
+         StringTrimRight(k);
+         StringTrimLeft(v);
          PutRaw(k, v);
         }
       FileClose(h);

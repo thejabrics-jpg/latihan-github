@@ -191,7 +191,7 @@ guaranteed to match `MQL5/Experts/XAU_AVG_PRO.mq5` exactly.
 | Input | Type | Default | Meaning | Validation |
 |---|---|---|---|---|
 | `EnableDashboard` | `bool` | `true` | Draw the chart panel | no validation needed |
-| `DashboardCorner` | `ENUM_CORNER` | `UPPER_LEFT_CORNER` | Panel corner | one of the declared ENUM_CORNER values (compiler enforced) |
+| `DashboardCorner` | `ENUM_BASE_CORNER` | `CORNER_LEFT_UPPER` | Panel corner | one of the declared ENUM_BASE_CORNER values (compiler enforced) |
 | `DashboardXOffset` | `int` | `8` | X offset (px) | ValidateConfig() clamps the value into its documented range |
 | `DashboardYOffset` | `int` | `22` | Y offset (px) | ValidateConfig() clamps the value into its documented range |
 | `DashboardUpdateIntervalMs` | `int` | `500` | Repaint interval (ms) | ValidateConfig() clamps the value into its documented range |
@@ -268,6 +268,10 @@ guaranteed to match `MQL5/Experts/XAU_AVG_PRO.mq5` exactly.
 Every enum type below is declared in `MQL5/Include/XAU_AVG_PRO/Types.mqh`.
 Because the values are declared as `input enum` with explicit member names,
 MetaEditor shows readable names in the dialog instead of numbers.
+
+`ENUM_BASE_CORNER` (`DashboardCorner`) is also an MQL5 standard enum:
+`CORNER_LEFT_UPPER` 0, `CORNER_LEFT_LOWER` 1, `CORNER_RIGHT_LOWER` 2,
+`CORNER_RIGHT_UPPER` 3 - the value stored in a `.set` file is that integer.
 
 `ENUM_TIMEFRAMES` (`EMATimeframe`, `ATRTimeframe`, `VolatilityTimeframe`) is the
 MQL5 standard enum, and `ValidateConfig()` checks each of them: `0`

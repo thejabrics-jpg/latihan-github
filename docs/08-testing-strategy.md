@@ -18,8 +18,8 @@ bash tools/run_all_qa.sh                  # the whole chain: 9 steps, ends "ALL 
 which runs, in order:
 
 ```
-python3 tools/qa_static_check.py           # 13 check families, exit code 0 = clean
-python3 tools/qa_mql_symbol_check.py       # 1 051 call sites resolved against the declarations
+python3 tools/qa_static_check.py           # 16 check families, exit code 0 = clean
+python3 tools/qa_mql_symbol_check.py       # 1 050 call sites resolved against the declarations
 python3 tools/gen_input_docs.py --check    # docs/02 still matches the source
 python3 tools/qa_preset_check.py           # every preset: 165 keys, types, manifest, secrets
 python3 tools/qa_doc_claims.py             # every count in README/CHANGELOG/docs is recomputed

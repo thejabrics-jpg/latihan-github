@@ -622,7 +622,7 @@ public:
    int                 NewsRefreshSeconds;
    // === DASHBOARD ===
    bool                EnableDashboard;
-   ENUM_CORNER         DashboardCorner;
+   ENUM_BASE_CORNER    DashboardCorner;
    int                 DashboardXOffset;
    int                 DashboardYOffset;
    int                 DashboardUpdateIntervalMs;

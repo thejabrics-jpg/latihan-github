@@ -22,15 +22,18 @@ Families enforced by those commands, and the acceptance rule each one backs:
 
 | Check | Rule it proves |
 |---|---|
-| 13 check families, listed below in the order they run; forbidden-marker scan (`TODO`, `FIXME`, `PLACEHOLDER`, `XXX`, `pseudo-code`, `not implemented`, `stub`) | §38/§41: no placeholder logic in a "complete" build |
+| 16 check families, listed below in the order they run; forbidden-marker scan (`TODO`, `FIXME`, `PLACEHOLDER`, `XXX`, `pseudo-code`, `not implemented`, `stub`) | §38/§41: no placeholder logic in a "complete" build |
 | brace/paren balance outside strings and comments | the file is syntactically whole |
 | all `#include` targets exist, every module includes `Types.mqh`, guards unique | §44: compile-in- one-step install |
 | every input assigned exactly once in `LoadInputs()`, every `CConfig` field populated (168 fields = 165 inputs + 3 operator flags), no orphan assignment | no silently ignored parameter |
-| every `g_cfg.X` / `m_cfg.X` exists; all 1 051 cross-module calls resolve by name, **arity and argument type shape**, and 1 552 member-field accesses resolve against the declaring type | the wiring between the 18 modules is real, not aspirational |
+| every `g_cfg.X` / `m_cfg.X` exists; all 1 050 cross-module calls resolve by name, **arity and argument type shape**, and 1 551 member-field accesses resolve against the declaring type | the wiring between the 18 modules is real, not aspirational |
 | every `XAU_*` identifier used is declared | no typo'd enum member, no half-renamed constant |
 | no struct returned by value | MQL5 portability convention of this codebase |
 | all 209 format strings (`StringFormat`/`PrintFormat` with a literal first argument): specifier count == argument count, and zero `%n` | MQL5 has no `%n`; a mismatch is a runtime corruption source |
 | no token-shaped literal, `TelegramBotToken` default is `""` | §41: no hard-coded credentials |
+| string mutators (`StringTrimLeft/Right`, `StringReplace`) are never used as an expression and never handed a temporary - they mutate a `string &` and return a count/bool | `s = StringTrimLeft(s)` is an MQL4-ism and was one of the four root causes |
+| every type named by an `input` or a member declaration is an MQL5 builtin, a standard MQL5 enum/struct (curated, each entry verified against the reference) or declared in this project | `ENUM_CORNER` was none of those; the type gate is what makes "it does not compile" a QA failure rather than a surprise |
+| MQL4 built-in names (`Digits()`, `Point()`, `CharToStr()`, `MarketInfo()`, ...) are absent, and every member read from a curated standard MQL5 structure exists in the reference | `CharToStr`, `UPPER_LEFT_CORNER` and `trans.magic` were all invented by carrying MQL4 habits into MQL5 |
 | `docs/02` regeneration equals the committed file | the input documentation cannot drift |
 | division-safety family: every division by a symbol-derived denominator is guarded locally, clamped where it is read, or backstopped by `MathIsValidNumber` | a zero denominator becomes `inf`/`NaN` and then silently becomes a lot size |
 | every enum member is referenced outside its own declaration | no dead flag that reads as a live feature |
@@ -41,7 +44,7 @@ Families enforced by those commands, and the acceptance rule each one backs:
 
 ### 13.1.1 Shape of the audited tree
 
-**165** inputs in **15** groups, **19** source files, **9 607** lines, **168**
+**165** inputs in **15** groups, **19** source files, **9 629** lines, **168**
 `CConfig` fields, **34** block reasons (plus `NONE`), **10** states, **28** Telegram
 commands, **34** dashboard rows, **209** format strings, **14** documentation pages.
 

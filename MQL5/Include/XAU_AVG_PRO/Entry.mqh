@@ -88,12 +88,10 @@ public:
       m_cfg  = cfg;
       m_spec = spec;
       m_log  = log;
+      // iMA(symbol, timeframe, ma_period, ma_shift, ma_method, applied_price) - both lines
+      // are built on the same timeframe, method and price source, because a cross created
+      // from two different timeframes or price sources is not a crossover signal.
       m_handle_fast = iMA(m_spec.Symbol(), m_cfg.EMATimeframe, m_cfg.FastEMAPeriod, 0, MODE_EMA, PRICE_CLOSE);
-      m_handle_slow = iMA(m_spec.Symbol(), m_cfg.SlowEMAPeriod, 0, MODE_EMA, PRICE_CLOSE);
-      // NOTE: the slow handle needs the same MA type/price source; created
-      // explicitly below so a wrong parameter list can never pass silently.
-      if(m_handle_slow != INVALID_HANDLE)
-         IndicatorRelease(m_handle_slow);
       m_handle_slow = iMA(m_spec.Symbol(), m_cfg.EMATimeframe, m_cfg.SlowEMAPeriod, 0, MODE_EMA, PRICE_CLOSE);
       if(m_handle_fast == INVALID_HANDLE || m_handle_slow == INVALID_HANDLE)
         {

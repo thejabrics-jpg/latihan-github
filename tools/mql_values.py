@@ -22,9 +22,11 @@ PERIODS = {
     'PERIOD_H3': 16777308, 'PERIOD_H4': 16777316, 'PERIOD_H6': 16777332, 'PERIOD_H8': 16777344,
     'PERIOD_H12': 16777368, 'PERIOD_D1': 16408, 'PERIOD_W1': 32769, 'PERIOD_MN1': 49153,
 }
-# ENUM_CORNER (chart objects): UPPER_LEFT..LOWER_RIGHT are 0..3
-CORNERS = {'UPPER_LEFT_CORNER': 0, 'UPPER_RIGHT_CORNER': 1,
-           'LOWER_LEFT_CORNER': 2, 'LOWER_RIGHT_CORNER': 3}
+# ENUM_BASE_CORNER - the MQL5 chart-corner enum (OBJPROP_CORNER). Note the MQL4 names
+# UPPER_LEFT_CORNER / LOWER_RIGHT_CORNER are a different enum with a different numbering:
+# using them here is what produced a type the MQL5 compiler has never heard of.
+CORNERS = {'CORNER_LEFT_UPPER': 0, 'CORNER_LEFT_LOWER': 1,
+           'CORNER_RIGHT_LOWER': 2, 'CORNER_RIGHT_UPPER': 3}
 # web colours, as MQL5 stores them: 0x00BBGGRR
 CLR = {
     'clrBlack': 0, 'clrWhite': 16777215, 'clrSilver': 12632256, 'clrGainsboro': 14474460,
@@ -97,11 +99,15 @@ def resolve(value: str, typ: str = '') -> str:
     raise ValueError(f"cannot resolve {v!r} for type {typ!r}")
 
 
+STANDARD_ENUMS = {'ENUM_BASE_CORNER', 'ENUM_ANCHOR_POINT', 'ENUM_TIMEFRAMES',
+                 'ENUM_ORDER_TYPE_FILLING', 'ENUM_SYMBOL_INFO_INTEGER', 'ENUM_CHART_PROPERTY_INTEGER'}
+
+
 def numeric_domain(typ: str) -> set[int] | None:
     """The set of legal integers for an enum-typed input, if it is an enum."""
     if typ in PERIODS.values() or typ == 'ENUM_TIMEFRAMES':
         return set(PERIODS.values())
-    if typ == 'ENUM_CORNER':
+    if typ == 'ENUM_BASE_CORNER':
         return set(CORNERS.values())
     table = enums_from_types().get(typ)
     return set(table.values()) if table else None

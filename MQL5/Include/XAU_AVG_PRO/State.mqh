@@ -72,7 +72,7 @@ public:
       m_since = XauNow();
      }
 
-   string StateName(const ENUM_XAU_STATE s)
+   string StateName(const ENUM_XAU_STATE s) const
      {
       switch(s)
         {

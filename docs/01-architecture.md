@@ -42,7 +42,7 @@ tools/
   run_all_qa.sh                  the whole chain in one command
 ```
 
-Total: 19 source files, 9,607 lines (recount with `wc -l MQL5/Experts/*.mq5 MQL5/Include/XAU_AVG_PRO/*.mqh`; it is the only metric in these documents that may change without a version bump). Every `.mqh` is standalone-compilable
+Total: 19 source files, 9,629 lines (recount with `wc -l MQL5/Experts/*.mq5 MQL5/Include/XAU_AVG_PRO/*.mqh`; it is the only metric in these documents that may change without a version bump). Every `.mqh` is standalone-compilable
 (it includes `Types.mqh` itself) and is protected by an include guard.
 
 ## 1.2 Module responsibilities and ownership

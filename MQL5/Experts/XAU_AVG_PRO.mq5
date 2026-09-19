@@ -193,7 +193,7 @@ input int                 NewsRefreshSeconds           = 60;               // Ca
 
 input group                "=== DASHBOARD ==="
 input bool                EnableDashboard              = true;             // Draw the chart panel
-input ENUM_CORNER         DashboardCorner              = UPPER_LEFT_CORNER; // Panel corner
+input ENUM_BASE_CORNER    DashboardCorner              = CORNER_LEFT_UPPER;  // Panel corner
 input int                 DashboardXOffset              = 8;               // X offset (px)
 input int                 DashboardYOffset              = 22;              // Y offset (px)
 input int                 DashboardUpdateIntervalMs    = 500;              // Repaint interval (ms)
@@ -271,7 +271,6 @@ SRt            g_rt;
 bool  g_config_errors = false;      // hard input problems disable trading
 bool  g_closing_basket = false;     // pipeline level close guard
 int   g_pipeline_runs = 0;
-bool  g_prev_cycle_active = false;
 string g_last_block_reason = "";
 ENUM_XAU_BLOCK g_last_block_code = XAU_BLK_NONE;
 datetime g_last_block_logged = 0;
@@ -499,7 +498,7 @@ string SafeComment(const string text)
       ushort c = StringGetCharacter(text, i);
       if(c < 32 || c > 126)
          c = ' ';
-      out += CharToStr(c);
+      out += ShortToString(c);
      }
    StringTrimRight(out);
    return(out);
@@ -1391,7 +1390,8 @@ bool ParseNum(const string args, double &num)
   }
 bool ParseFirstToken(const string args, string &tok)
   {
-   string s = StringTrimLeft(args);
+   string s = args;
+   StringTrimLeft(s);
    int sp = StringFind(s, " ");
    tok = (sp > 0 ? StringSubstr(s, 0, sp) : s);
    StringToLower(tok);
@@ -1399,11 +1399,13 @@ bool ParseFirstToken(const string args, string &tok)
   }
 double SecondNumber(const string args, double &num)
   {
-   string s = StringTrimLeft(args);
+   string s = args;
+   StringTrimLeft(s);
    int sp = StringFind(s, " ");
    if(sp < 0)
       return(0.0);
-   string rest = StringTrimLeft(StringSubstr(s, sp + 1));
+   string rest = StringSubstr(s, sp + 1);
+   StringTrimLeft(rest);
    if(!ParseNum(rest, num))
       return(0.0);
    return(1.0);
@@ -2027,7 +2029,8 @@ int OnInit(void)
         {
          int p = StringFind(rest, "\n");
          string l = (p < 0 ? rest : StringSubstr(rest, 0, p));
-         rest = (p < 0 ? "" : StringTrimLeft(StringSubstr(rest, p + 1)));
+         rest = (p < 0 ? "" : StringSubstr(rest, p + 1));
+         StringTrimLeft(rest);
          if(StringLen(l) > 0)
             g_log.Error(XAU_T_CFG, "invalid configuration: " + l);
         }
@@ -2225,13 +2228,22 @@ void OnTimer(void)
 /// instead of waiting for the next tick.
 void OnTradeTransaction(const MqlTradeTransaction &trans, const MqlTradeRequest &request, const MqlTradeResult &result)
   {
-   if(trans.type != TRADE_TRANSACTION_DEAL_ADD)
+   if(trans.type != TRADE_TRANSACTION_DEAL_ADD || trans.deal == 0)
       return;
-   if(trans.magic != g_cfg.MagicNumber)
-      return;
-   // deal properties are only readable after the deal is inside the
-   // selected history window
-   HistorySelect(trans.time - 60, trans.time + 60);
+   // MqlTradeTransaction has no magic field and no time field at all - the reference
+   // structure is deal, order, symbol, type, order_type, order_state, deal_type, time_type,
+   // time_expiration, price, price_trigger, price_sl, price_tp, volume, position,
+   // position_by - so the deal record is the only authoritative source of the magic number.
+   // HistoryDealSelect() copies a deal only if it lies inside the interval requested by the
+   // last HistorySelect() call, hence the window; it ends in the future because every
+   // transaction the terminal delivers has just been executed on the server.
+   datetime now = TimeCurrent();
+   if(!HistorySelect(now - 86400, now + 60))
+      return;                        // history unreachable: the next tick reconciles anyway
+   if(!HistoryDealSelect(trans.deal))
+      return;                        // deal not in the window yet: the next tick reconciles
+   if(HistoryDealGetInteger(trans.deal, DEAL_MAGIC) != g_cfg.MagicNumber)
+      return;                       // another EA or a manual trade: never ours to react to
    g_cycle.Reconcile();
    g_basket.Recompute();
    g_sm.Derive(g_cycle.IsActive(), false);

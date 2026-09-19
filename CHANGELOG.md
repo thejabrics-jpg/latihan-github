@@ -1,5 +1,34 @@
 # Changelog
 
+## [Unreleased] - MetaEditor compile fixes (source-level, no functional change)
+
+`XAU_EA_VERSION` stays `1.0.0`: nothing a trader can observe changed, only code that
+could never have compiled. Four parser-level defects cascaded into most of the reported
+error list; each class is now also a static gate so it cannot come back.
+
+* Fixed: `DashboardCorner` used the non-existent type `ENUM_CORNER` with the MQL4 member
+  names - it is now the standard `ENUM_BASE_CORNER`/`CORNER_LEFT_UPPER` (same 0 value, so
+  every preset keeps its meaning). Because it sits inside `CConfig`, the whole struct failed
+  to parse and every `g_cfg.*` use reported an error.
+* Fixed: nine `StringTrimLeft/StringTrimRight` calls used as expressions or nested around
+  temporaries; these mutators take a `string &` and return a count, so they are now statements.
+* Fixed: a duplicate `g_prev_cycle_active` declaration, and two member functions
+  (`CStateStore::Find`, `CStateMachine::StateName`) that did not modify state and are now
+  `const`, which is what the const-correct callers require.
+* Fixed: `OnTradeTransaction` read `trans.magic` and `trans.time`, which `MqlTradeTransaction`
+  does not have; the magic is now taken from the deal record inside a requested history window.
+* Fixed: `Telegram.mqh` - `WebRequest` was handed `NULL` for the header string and `CharArrayToString`
+  was used as if it filled a `string &` (it returns one); the response conversion is now the
+  documented call and an empty body is reported as a transport error. `CharToStr` (MQL4) became
+  `ShortToString` for UTF-16 code units and `CharToString` for the one byte-wise site.
+* Fixed: `CEntryEngine::Init` built the slow EMA handle with a 5-argument `iMA` call (the
+  timeframe was missing) and released it again immediately; the handle is now created once,
+  on `EMATimeframe`, which is what the surviving line already did.
+* Added: static check families 14-16 (string-mutator misuse, type resolution, MQL4 names and
+  standard-structure members) in `tools/qa_static_check.py`.
+* Note: MetaEditor was not available in this environment, so these fixes are verified by the
+  static chain only - the compile result still has to be read from a local `metaeditor64.exe` run.
+
 All notable changes to XAU_AVG_PRO. Versions follow `MAJOR.MINOR.PATCH`;
 `XAU_EA_VERSION` in `MQL5/Include/XAU_AVG_PRO/Types.mqh` and `#property version`
 in the `.mq5` are the authority for the build string.
@@ -44,7 +73,7 @@ evaluated before every opening decision.
   management, Telegram specification, testing strategy, known risks and
   limitations, installation, backtest protocol, stress report, code audit, risk
   disclaimer.
-* **QA tooling** `tools/`: `qa_static_check.py` (13 check families incl.
+* **QA tooling** `tools/`: `qa_static_check.py` (16 check families incl.
   forbidden-marker scan, input <-> `CConfig` mirroring, 209 format strings),
   `qa_mql_symbol_check.py` (1 051 call sites and 1 552 field accesses resolved against
   the declarations, by name, arity and type shape), `gen_input_docs.py` (docs/02

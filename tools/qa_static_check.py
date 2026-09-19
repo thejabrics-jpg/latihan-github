@@ -22,7 +22,11 @@ Exit code 0 = all checks pass, 1 = problems found.
 from __future__ import annotations
 import re
 import sys
+
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import mql_values
 
 ROOT = Path(__file__).resolve().parents[1]
 EA_DIR = ROOT / "MQL5" / "Experts"
@@ -425,6 +429,135 @@ def main() -> int:
                 if not guarded:
                     problems.append(f"{f.name}:{idx + 1}: division by {den} has no guard and no clamp")
 
+
+    # ---------------- 14. string mutators are statements, never expressions ----------------
+    #
+    # StringTrimLeft/StringTrimRight/StringReplace modify their first argument and return a
+    # count or a bool - they do NOT return the trimmed string. `s = StringTrimLeft(s)` and
+    # `f(StringTrimRight(g(x)))` therefore fail to compile, and a nested call also hands a
+    # temporary to a parameter declared as `string &`, which must be an lvalue. This family
+    # existed as a blind spot and cost a whole MetaEditor round.
+    MUTATORS = ("StringTrimLeft", "StringTrimRight", "StringReplace")
+    for f in files:
+        for idx, line in enumerate(cleaned[f].splitlines()):
+            for mm in re.finditer(r"\b(" + "|".join(MUTATORS) + r")\s*\(", line):
+                before = line[:mm.start()].rstrip()
+                used_as_value = bool(re.search(r"(=|\+|\breturn\s*\(|\(|,)$", before))
+                # find the argument text
+                depth = 0
+                start = mm.end()
+                end = len(line)
+                for k in range(mm.end() - 1, len(line)):
+                    if line[k] == "(":
+                        depth += 1
+                    elif line[k] == ")":
+                        depth -= 1
+                        if depth == 0:
+                            end = k
+                            break
+                arg = line[start:end]
+                temporary = "(" in arg            # a call result cannot bind to string&
+                if used_as_value or temporary:
+                    problems.append(
+                        f"{f.name}:{idx + 1}: {mm.group(1)}() {'result used as a value' if used_as_value else ''}"
+                        f"{' and its argument is a temporary' if temporary else ''}"
+                        " - these mutate a string& and return a count/bool")
+
+    # ---------------- 15. every declared type exists ----------------
+    #
+    # `ENUM_CORNER` compiled into this repository for a whole release because nothing
+    # checked type names against what MQL5 and Types.mqh actually declare. Any type used
+    # for an input or a config/member must be a MQL5 builtin, an MQL5 standard enum or
+    # struct, or something declared in this project.
+    mql_builtins = {"void", "bool", "char", "uchar", "short", "ushort", "int", "uint",
+                    "long", "ulong", "float", "double", "string", "color", "datetime"}
+    declared_here: set[str] = set()
+    for f in files:
+        declared_here |= set(re.findall(r"^\s*(?:class|struct|enum)\s+(\w+)", cleaned[f], re.M))
+    # Standard MQL5 enums used by this project. Each entry must be verifiable in the
+    # MQL5 reference - that is the whole point of the family, since `ENUM_CORNER` was
+    # an MQL4 name and sat in this tree for a full release.
+    std_enums = {"ENUM_TIMEFRAMES", "ENUM_POSITION_TYPE", "ENUM_BASE_CORNER",
+                 "ENUM_ANCHOR_POINT", "ENUM_ORDER_TYPE", "ENUM_ORDER_STATE",
+                 "ENUM_DEAL_TYPE", "ENUM_DEAL_ENTRY", "ENUM_ORDER_TYPE_TIME",
+                 "ENUM_ORDER_TYPE_FILLING", "ENUM_ACCOUNT_MARGIN_MODE",
+                 "ENUM_TRADE_ACTION_DEAL", "ENUM_DAY_OF_WEEK"}
+    std_enums |= set(mql_values.STANDARD_ENUMS)
+    # standard MQL5 data structures (all start with Mql, matched by prefix too)
+    std_structs = {"MqlTick", "MqlRates", "MqlRates", "MqlDateTime", "MqlTradeTransaction",
+                   "MqlTradeRequest", "MqlTradeResult", "MqlTradeCheckResult",
+                   "MqlCalendarValue", "MqlCalendarEvent", "MqlCalendarCountry",
+                   "MqlParam", "MqlBookInfo", "MqlNetworkStatus"}
+    unknown: list[str] = []
+    for f in files:
+        txt = cleaned[f]
+        for mm in re.finditer(r"^\s*input\s+(\w+)\s+\w+\s*=", txt, re.M):
+            t = mm.group(1)
+            if t not in mql_builtins | declared_here | std_enums | std_structs and not t.startswith("Mql"):
+                ln = txt[:mm.start()].count("\n") + 1
+                unknown.append(f"{f.name}:{ln} input type {t}")
+        for mm in re.finditer(r"^\s*(?:const\s+)?(\w+)\s+\w+\s*;", txt, re.M):
+            t = mm.group(1)
+            if t in ("return", "else", "case", "break", "continue", "if", "while", "for"):
+                continue
+            if t not in mql_builtins | declared_here | std_enums | std_structs and not t.startswith("Mql"):
+                ln = txt[:mm.start()].count("\n") + 1
+                unknown.append(f"{f.name}:{ln} member/local type {t}")
+    for u in sorted(set(unknown)):
+        problems.append(f"undeclared type in {u} - MQL5 has no such type and Types.mqh does not declare it")
+    if not unknown:
+        infos.append(f"every input/member type resolves (MQL5 builtins + {len(declared_here)} project types)")
+
+    # ---------------- 16. MQL4 carry-overs and stdlib struct members ----------------
+    #
+    # Two defects classes that MetaEditor reported and the earlier families could not see:
+    # MQL4 built-in names (Digits, Point, MarketInfo, CharToStr, ...) that do not exist in
+    # MQL5 at all, and members read from a standard library structure that does not have them
+    # (trans.magic, trans.time). The stdlib member lists below are copied from the MQL5
+    # reference; a structure is only added once its field table has been read there, because
+    # an invented whitelist is worse than none.
+    MQL4_ONLY = ("Digits", "Point", "Bid", "Ask", "MarketInfo", "OrderSelect", "OrdersTotal",
+                 "OrdersTotal", "AccountBalance", "AccountEquity", "AccountFreeMargin",
+                 "AccountProfit", "DoubleToStr", "StrToDouble", "StrToInteger", "CharToStr",
+                 "RefreshRates", "SetTimer", "KillTimer", "StringLeft", "StringRight",
+                 "WindowsTotal", "DayOfWeek", "DayOfYear", "DayOfMonth",
+                 "Hour", "Minute", "Seconds", "OrderClose", "OrderModify", "OrderTotal",
+                 "OrdersHistoryTotal")
+    MQL4_ENUMS = ("ENUM_CORNER", "UPPER_LEFT_CORNER", "LOWER_LEFT_CORNER", "UPPER_RIGHT_CORNER",
+                  "LOWER_RIGHT_CORNER", "ENUM_BASECORNER")
+    STDLIB_MEMBERS = {
+        # https://www.mql5.com/en/docs/constants/structures/mqltradetransaction
+        "MqlTradeTransaction": {"deal", "order", "symbol", "type", "order_type", "order_state",
+                                 "deal_type", "time_type", "time_expiration", "price",
+                                 "price_trigger", "price_sl", "price_tp", "volume", "position",
+                                 "position_by"},
+        # https://www.mql5.com/en/docs/constants/structures/mqldatetime
+        "MqlDateTime": {"year", "mon", "day", "hour", "min", "sec", "day_of_week", "day_of_year"},
+    }
+    for f in files:
+        txt = cleaned[f]
+        for line_no, line in enumerate(txt.splitlines(), 1):
+            for name in MQL4_ENUMS:
+                if re.search(r"\b" + name + r"\b", line):
+                    problems.append(f"{f.name}:{line_no}: {name} is not an MQL5 identifier")
+            for mm in re.finditer(r"\b(" + "|".join(MQL4_ONLY) + r")\s*\(", line):
+                before = line[:mm.start()].rstrip()
+                if before.endswith((".", ">", "::")):
+                    continue                     # a member call on our own object
+                if re.fullmatch(r"\s*(?:const\s+)?[A-Za-z_]\w*\s*\**\s*", before):
+                    continue                     # a definition of our own accessor
+                problems.append(f"{f.name}:{line_no}: {mm.group(1)}() is MQL4, it does not exist in MQL5")
+        for stype, allowed in STDLIB_MEMBERS.items():
+            vars_: set[str] = set()
+            for mm in re.finditer(r"\b" + stype + r"\s*&?\s*(\w+)", txt):
+                if mm.group(1) != stype:
+                    vars_.add(mm.group(1))
+            for var in vars_:
+                for mm in re.finditer(r"\b" + var + r"\.(\w+)", txt):
+                    if mm.group(1) not in allowed:
+                        ln = txt[:mm.start()].count("\n") + 1
+                        problems.append(f"{f.name}:{ln}: {stype} has no member {mm.group(1)}")
+    infos.append("no MQL4 built-in names, and stdlib struct members verified against the reference")
 
     print("=" * 72)
     print("XAU_AVG_PRO static QA")

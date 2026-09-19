@@ -115,7 +115,7 @@ private:
          bool safe = (c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') ||
                      c == '-' || c == '_' || c == '.' || c == '~';
          if(safe)
-            out += CharToStr(c);
+            out += CharToString((uchar)c);
          else
             out += StringFormat("%%%02X", c);
         }
@@ -165,12 +165,12 @@ private:
                          i += 4;
                         }
                       else
-                         acc += CharToStr(n);
+                         acc += ShortToString(n);
             continue;
            }
          if(c == '"')
             break;
-         acc += CharToStr(c);
+         acc += ShortToString(c);
         }
       out = acc;
       return(true);
@@ -193,7 +193,7 @@ private:
          ushort c = StringGetCharacter(json, i);
          if(c < '0' || c > '9')
             break;
-         digits += CharToStr(c);
+         digits += ShortToString(c);
         }
       if(StringLen(digits) == 0 || digits == "-")
          return(false);
@@ -206,11 +206,16 @@ private:
       string url = XAU_TG_API + "/bot" + m_cfg.TelegramBotToken + "/" + method;
       if(StringLen(query) > 0)
          url += "?" + query;
+      // WebRequest(method, url, headers, timeout, uchar &send[], uchar &recv[], string &result_headers)
+      // - the body/response buffers are 'uchar' arrays because that is the element type
+      // the documented overloads declare, and the request-header argument is a string, not
+      // NULL: a wrong element type or a NULL header argument is "no one of the overloads
+      // can be applied to the function call", which is exactly how this call failed.
       uchar send[];
       uchar recv[];
       string headers = "";
       string result_headers = "";
-      int code = WebRequest("GET", url, NULL, m_cfg.TelegramRequestTimeoutMs, send, recv, result_headers);
+      int code = WebRequest("GET", url, headers, m_cfg.TelegramRequestTimeoutMs, send, recv, result_headers);
       if(code == -1)
         {
          m_errors++;
@@ -220,16 +225,16 @@ private:
       if(code != 200)
         {
          m_errors++;
-         string body = "";
-         CharArrayToString(recv, 0, WHOLE_ARRAY, body, CP_UTF8);
+         string body = CharArrayToString(recv, 0, WHOLE_ARRAY, CP_UTF8);
          m_last_error = StringFormat("HTTP %d from %s: %s", code, method, StringSubstr(body, 0, 160));
          return(false);
         }
-      string body = "";
-      if(!CharArrayToString(recv, 0, WHOLE_ARRAY, body, CP_UTF8))
+      // The conversion cannot fail into a bool - an empty body is the failure it signals.
+      string body = CharArrayToString(recv, 0, WHOLE_ARRAY, CP_UTF8);
+      if(StringLen(body) == 0)
         {
          m_errors++;
-         m_last_error = "CharArrayToString failed on the response body";
+         m_last_error = "empty response body from the Bot API";
          return(false);
         }
       response = body;
@@ -486,7 +491,9 @@ public:
    /// Sanitise + whitelist + tokenize one line of text.
    void ParseAndQueue(const string raw)
      {
-      string s = StringTrimLeft(StringTrimRight(raw));
+      string s = raw;
+      StringTrimRight(s);
+      StringTrimLeft(s);
       int nl = StringFind(s, "\n");
       if(nl > 0)
          s = StringSubstr(s, 0, nl);            // "@mybot" suffixes and multi-line text
@@ -539,7 +546,9 @@ public:
       string args = "";
       for(int i = 1; i < n; i++)
         {
-         string a = StringTrimLeft(StringTrimRight(parts[i]));
+         string a = parts[i];
+         StringTrimRight(a);
+         StringTrimLeft(a);
          if(StringLen(a) == 0)
             continue;
          args += (StringLen(args) > 0 ? " " : "") + a;
