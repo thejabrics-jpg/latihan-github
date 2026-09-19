@@ -104,6 +104,21 @@ Each line is a property that was read in the source, with the file it lives in.
 * `CloseAllLayers` marks the cycle closed only when `PositionCount() == 0`;
   `SetClosing(false)` runs after the sweep, so a partial close retries.
 
+**State / recovery and detach (`StateStore.mqh`, `Cycle.mqh`, `OnInit`/`OnDeinit` in the EA).**
+* Startup order was read, not assumed: `g_spec.Refresh(_Symbol)` -> `LoadInputs()` ->
+  `LoadPersistedFlags()` -> `ValidateConfig()`. Persisted operator flags and Telegram
+  overrides are restored *before* validation so that a restart cannot silently
+  re-enable a limit the operator had relaxed, and validation still runs on the restored
+  values (`EA:821` area).
+* The basket is never trusted from memory: `g_cycle.Reconcile()` runs at the head of the
+  pipeline on every pass (7 call sites: pipeline, trade transaction, Telegram close
+  paths, cycle finish), so the first thing an EA does after a restart is read the real
+  positions of `symbol + MagicNumber`.
+* `OnDeinit` order: kill timer -> log the reason -> `Reconcile()` -> **loud warning if a
+  cycle is still open** (positions are deliberately left alone) -> flushed
+  `TrySaveState(true)` -> dashboard teardown -> Telegram/entry/averaging/filter deinit ->
+  log close last, so the deinit reason is always recorded. Indicator handles are released
+  by the module `Deinit()`s, which matters in tester passes that re-init repeatedly.
 **State / recovery (`StateStore.mqh`, `Statistics.mqh`, `Cycle.mqh`).**
 * the state file is written atomically (`.tmp` + `FileMove(FILE_REWRITE)`), keyed
   by `symbol + magic`, so two charts do not fight over one file;
