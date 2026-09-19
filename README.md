@@ -10,7 +10,7 @@ not.
 * 34 named block reasons (plus `NONE`), 10 derived states, exactly one module that can send an order
 * Telegram control (28 whitelisted commands, confirmation for destructive ones),
   chart dashboard (34 rows), daily report to chart / Telegram / CSV
-* built-in deterministic self tests (76 assertions) and Python static QA that
+* built-in deterministic self tests (75 assertions) and Python static QA that
   resolves every cross-module call by name, arity and argument type
 
 > **No profitability is claimed anywhere in this repository.** Read
@@ -73,12 +73,15 @@ tools/*.py                             QA harness, doc generator, stress model
 ## Build, check, run
 
 ```bash
-# 1. static QA (no terminal needed) - must print "all static checks passed"
-python3 tools/qa_static_check.py
-python3 tools/qa_mql_symbol_check.py
-python3 tools/gen_input_docs.py --check
+# 1. everything that can be checked without a terminal - one command, nine steps
+bash tools/run_all_qa.sh          # must end with: ALL QA STEPS PASSED
 
-# 2. the model behind docs/12
+# 2. (individual steps, if you want to run one of them)
+python3 tools/qa_static_check.py          # structure, wiring, format strings, markers
+python3 tools/qa_mql_symbol_check.py       # call arity, member names, enum values
+python3 tools/gen_input_docs.py --check    # docs/02 is current
+python3 tools/qa_preset_check.py           # presets complete, type-legal, secret-free
+python3 tools/qa_doc_claims.py             # every number in these docs is true
 python3 tools/stress_model.py --emit-doc docs/12-stress-test-report.md
 
 # 3. compile in MetaEditor (F7) -> 0 errors, 0 warnings, then attach to an M15
@@ -105,6 +108,20 @@ averaging → cycle management → Telegram → tests → risks → implementati
 docs). The code passes every automated check listed above; it has **not** been
 compiled or run against a broker from here. Version history:
 [CHANGELOG.md](CHANGELOG.md).
+
+## What is verified, what is implemented, what cannot be proven here
+
+Three different claims, deliberately separated. Read the third column before you fund
+anything; `docs/13.5` is the long version.
+
+| Verified mechanically in this repository | Implemented, but only a terminal can prove it | Cannot be verified from here at all |
+|---|---|---|
+| Structure: braces/guards/includes, 1 051 cross-module calls by name, arity and type shape, 1 552 member accesses, every enum member used | MetaEditor reports **0 errors, 0 warnings** (the requirement in `docs/10.2`, not a result) | Real `OrderSend`/`OrderCheck` behaviour: requotes, partial fills, `10030` fallback in practice (tests A-V, `docs/08`) |
+| Every one of the 165 inputs is copied into `CConfig` exactly once; no placeholder markers; no secret-shaped literal | The 75 self-test assertions actually pass at `OnInit` in a terminal | Broker-specific values: real swap, commission, freeze-level rejections, margin mode quirks |
+| All 209 format strings: specifier count == argument count, zero `%n` (MQL5 has no `%n`) | News blocking on a real economic calendar (`CalendarValueHistory` is unavailable in the tester) | Whether *your* account is hedging or netting, or allows hedged closes at all |
+| Risk precedence read in the source: severity-ordered `Strongest()`, state gate before risk gate on both entry and averaging | Restart recovery after a real terminal restart with an open basket (the state file logic is unit-tested, the disk + timing behaviour is not) | Live feed hazards: slippage, weekend gap sizes, spread blowouts between your ticks |
+| Presets load: 165 keys, numeric only, `; overrides:` manifest accurate, token/chat-id left empty | Telegram actually reaching the Bot API (needs `WebRequest` allow-list + your own token) | **Profitability.** Nothing here predicts profit; averaging increases exposure non-linearly (`docs/14`) |
+| `docs/02` regenerates identical; `docs/12` is byte-identical to `tools/stress_model.py`; every count quoted in these docs is recomputed by `tools/qa_doc_claims.py` | Dashboard and object layout on your chart (fonts, scaling, chart events) | Whether the strategy is suitable for your capital and jurisdiction |
 
 ## Licence / usage note
 

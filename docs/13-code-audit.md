@@ -9,26 +9,45 @@ reproduce it.
 ## 13.1 Automated checks (all green at the time of writing)
 
 ```
-$ python3 tools/qa_static_check.py        -> all static checks passed
-$ python3 tools/qa_mql_symbol_check.py    -> no signature or member mismatches
-$ python3 tools/gen_input_docs.py --check -> docs/02 is up to date (165 inputs)
-$ python3 tools/stress_model.py --json    -> model runs clean
+$ bash tools/run_all_qa.sh                -> ALL QA STEPS PASSED (runs everything below)
+$ python3 tools/qa_static_check.py         -> all static checks passed
+$ python3 tools/qa_mql_symbol_check.py     -> no signature or member mismatches
+$ python3 tools/gen_input_docs.py --check  -> docs/02 is up to date (165 inputs)
+$ python3 tools/qa_preset_check.py         -> all presets valid
+$ python3 tools/qa_doc_claims.py           -> documentation matches the source
+$ python3 tools/stress_model.py --json     -> model runs clean
 ```
 
-Families enforced by those four commands, and the acceptance rule each one backs:
+Families enforced by those commands, and the acceptance rule each one backs:
 
 | Check | Rule it proves |
 |---|---|
-| forbidden-marker scan (`TODO`, `FIXME`, `PLACEHOLDER`, `XXX`, `pseudo-code`, `not implemented`, `stub`) | §38/§41: no placeholder logic in a "complete" build |
+| 13 check families, listed below in the order they run; forbidden-marker scan (`TODO`, `FIXME`, `PLACEHOLDER`, `XXX`, `pseudo-code`, `not implemented`, `stub`) | §38/§41: no placeholder logic in a "complete" build |
 | brace/paren balance outside strings and comments | the file is syntactically whole |
 | all `#include` targets exist, every module includes `Types.mqh`, guards unique | §44: compile-in- one-step install |
 | every input assigned exactly once in `LoadInputs()`, every `CConfig` field populated (168 fields = 165 inputs + 3 operator flags), no orphan assignment | no silently ignored parameter |
-| every `g_cfg.X` / `m_cfg.X` exists; all 1 000+ cross-module calls resolve by name, **arity and argument type shape** | the wiring between the 18 modules is real, not aspirational |
+| every `g_cfg.X` / `m_cfg.X` exists; all 1 051 cross-module calls resolve by name, **arity and argument type shape**, and 1 552 member-field accesses resolve against the declaring type | the wiring between the 18 modules is real, not aspirational |
 | every `XAU_*` identifier used is declared | no typo'd enum member, no half-renamed constant |
 | no struct returned by value | MQL5 portability convention of this codebase |
-| 209 format strings: specifier count == argument count, and zero `%n` | MQL5 has no `%n`; a mismatch is a runtime corruption source |
+| all 209 format strings (`StringFormat`/`PrintFormat` with a literal first argument): specifier count == argument count, and zero `%n` | MQL5 has no `%n`; a mismatch is a runtime corruption source |
 | no token-shaped literal, `TelegramBotToken` default is `""` | §41: no hard-coded credentials |
 | `docs/02` regeneration equals the committed file | the input documentation cannot drift |
+| division-safety family: every division by a symbol-derived denominator is guarded locally, clamped where it is read, or backstopped by `MathIsValidNumber` | a zero denominator becomes `inf`/`NaN` and then silently becomes a lot size |
+| every enum member is referenced outside its own declaration | no dead flag that reads as a live feature |
+| presets: 165 keys each, type-legal, numeric-only, `; overrides:` manifest accurate, no secret shapes | a shipped default must actually be loadable, and its intent must be readable |
+| every count quoted in `README`/`CHANGELOG`/these pages is recomputed from the tree | a stale number is how a correct document starts lying |
+| every file name and class name mentioned in the docs exists (stdlib references excepted) | the specification cannot describe a module that was never written |
+| every whitelisted Telegram command appears in `docs/07` | an undocumented command is an untested one |
+
+### 13.1.1 Shape of the audited tree
+
+**165** inputs in **15** groups, **19** source files, **9 607** lines, **168**
+`CConfig` fields, **34** block reasons (plus `NONE`), **10** states, **28** Telegram
+commands, **34** dashboard rows, **209** format strings, **14** documentation pages.
+
+Those numbers are recomputed from the tree by `python3 tools/qa_doc_claims.py`, which
+also fails if this page, the README or the CHANGELOG quotes a value the source no longer
+produces. That is the only reason any count in these documents should be believed.
 
 ## 13.2 Manual audit of the risky paths
 
@@ -52,6 +71,21 @@ Each line is a property that was read in the source, with the file it lives in.
 * `deviation` is set from `MaximumDeviationPoints`, `type_time=GTC`,
   `magic`/`comment` from the validated config, and the comment is
   sanitised/truncated to 28 printable ASCII characters before it is ever used.
+
+**Risk precedence (`Risk.mqh`, `State.mqh`, pipeline order in the EA).**
+* `Strongest(a, b)` is `(int)a >= (int)b ? a : b` over `ENUM_XAU_ACTION` declared in
+  severity order (`BLOCK_ONLY < CLOSE_BASKET < CLOSE_ALL < EMERGENCY`), and
+  `EvaluateLimits()` *accumulates* with it. An emergency therefore cannot be diluted by
+  a milder limit evaluated later; the account-drawdown emergency is additionally
+  force-merged (`Risk.mqh:242-244`).
+* Entry and averaging are both gated twice: `g_sm.Allows(XAU_INT_ENTRY)` /
+  `g_sm.Allows(XAU_INT_AVERAGING)` first (an illegal attempt increments a visible
+  counter instead of failing silently), then `g_risk.CheckEntry` / `g_risk.CheckAveraging`.
+  Because the risk manager is what puts the machine into `RISK_BLOCKED`/`EMERGENCY_STOP`,
+  a profit opportunity can never outrun a limit: the limit is what removes the permission.
+* Order of the pipeline is `Reconcile -> basket recompute -> Derive -> EvaluateLimits ->
+  exits -> averaging -> entry`. Exits are evaluated before entries; there is no path from
+  a signal to `OrderSend` that does not pass through both gates above.
 
 **Risk (`Risk.mqh`, `Basket.mqh`).**
 * No `OrderSend` in the risk module; the engine executes the request struct
@@ -83,6 +117,16 @@ Each line is a property that was read in the source, with the file it lives in.
   cache was unavailable (`docs/09.6`) rather than reporting a clean history.
 
 **Numbers / time (`BrokerSpec.mqh`, `Types.mqh`).**
+* Every denominator that can reach a lot size is non-zero by construction, and that is
+  now enforced mechanically (static QA family 13) rather than by inspection:
+  `m_point` starts at `0.01` in the constructor and is clamped after the symbol read
+  (`BrokerSpec.mqh:77`), `m_vol_step` is clamped (`:84`), `m_vol_min` is raised to the
+  step (`:86`); `risk_per_lot` and `margin_per_lot` in `Lots.mqh:97/106` return an
+  explicit block (`SPEC_INVALID` / `MARGIN`) instead of dividing, and the result is
+  re-checked with `MathIsValidNumber` before it can reach the broker.
+* `m_contract` is deliberately *not* clamped (a zero contract size means the symbol is
+  unusable, not that it is 100), so it never appears as a denominator; the check would
+  flag it if it did.
 * digits, point, tick size/value, contract size, lot bounds, stops/freeze levels,
   filling mask, leverage and account mode are all read from the symbol; nothing in
   the tree hard-codes `0.01`, `100`, `5` digits, a symbol name or a suffix;

@@ -3,6 +3,7 @@
 ; 165 inputs, 16 overridden
 ; Cent account profile: the money caps are in account currency (cents on a cent account).
 ; Use when the USD equivalent of the modelled worst case (docs/12) is not acceptable on a standard account.
+; overrides: AveragingDistancePoints,BasketCutLossMoney,BasketTPMode,BasketTakeProfitMoney,InitialLot,LogToFile,LotMode,LotMultiplier,MaximumAccountDrawdownPercent,MaximumDailyLossMoney,MaximumDailyLossPercent,MaximumFloatingLossMoney,MaximumLayer,MaximumLotPerOrder,MaximumTotalLot,RunSelfTestsOnInit
 [input]
 EANameLabel=XAU_AVG_PRO
 MagicNumber=20260919
@@ -137,7 +138,7 @@ EnableDashboardButton=1
 RemoveDashboardOnDetach=1
 ColorHeader=16748574
 ColorNormal=14474460
-ColorWarning=42495
+ColorWarning=42546
 ColorDanger=4678655
 EnableTelegram=0
 TelegramBotToken=

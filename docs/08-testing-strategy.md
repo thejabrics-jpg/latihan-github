@@ -12,11 +12,23 @@ the only layer that can be run without a terminal.
 ## 8.1 Layer 1 - static QA (run in CI or before every release)
 
 ```
-python3 tools/qa_static_check.py          # 12 check families, exit code 0 = clean
-python3 tools/qa_mql_symbol_check.py      # 1 000+ call sites resolved against the declarations
-python3 tools/gen_input_docs.py --check   # docs/02 still matches the source
-python3 tools/stress_model.py --json >/dev/null   # the model behind docs/12
+bash tools/run_all_qa.sh                  # the whole chain: 9 steps, ends "ALL QA STEPS PASSED"
 ```
+
+which runs, in order:
+
+```
+python3 tools/qa_static_check.py           # 13 check families, exit code 0 = clean
+python3 tools/qa_mql_symbol_check.py       # 1 051 call sites resolved against the declarations
+python3 tools/gen_input_docs.py --check    # docs/02 still matches the source
+python3 tools/qa_preset_check.py           # every preset: 165 keys, types, manifest, secrets
+python3 tools/qa_doc_claims.py             # every count in README/CHANGELOG/docs is recomputed
+python3 tools/stress_model.py --emit-doc /tmp/d12.md   # docs/12 must be byte-identical
+```
+
+Step 9 of that chain is **compilation**, and in a Linux sandbox it prints
+`NOT AVAILABLE IN CURRENT ENVIRONMENT` instead of pretending: the pass line below does
+not mean the code was compiled (`docs/13.5`).
 
 What they enforce, and why each of those is a *release* check rather than a lint
 nicety:
@@ -45,7 +57,7 @@ nicety:
 
 ## 8.2 Layer 2 - the built-in self tests
 
-`SelfTest.mqh` (510 lines, 76 assertions) runs from `OnInit` when
+`SelfTest.mqh` (510 lines, 75 assertions + 8 skips) runs from `OnInit` when
 `RunSelfTestsOnInit=true`. It needs **no market data, no positions and no
 network**, and it never sends an order. Each check prints `PASS/FAIL/SKIP` with
 the measured value into the log (`[TEST]`) and into a single summary that is also

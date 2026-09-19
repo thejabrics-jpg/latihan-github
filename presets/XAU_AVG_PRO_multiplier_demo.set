@@ -3,6 +3,7 @@
 ; 165 inputs, 18 overridden
 ; DEMO ONLY: shows how a multiplier behaves in the tail. Do not fund this profile.
 ; Read docs/12 scenario C and docs/14.1 first; the caps are tighter than the growth.
+; overrides: ATRMultiplier,ActionOnAccountDD,AveragingDistanceMode,BasketCutLossMoney,BasketTPMode,BasketTakeProfitMoney,InitialLot,LogToFile,LotMode,LotMultiplier,MaximumAccountDrawdownPercent,MaximumAveragingDistancePoints,MaximumDailyLossMoney,MaximumFloatingLossMoney,MaximumLayer,MaximumLotPerOrder,MaximumTotalLot,MinimumAveragingDistancePoints
 [input]
 EANameLabel=XAU_AVG_PRO
 MagicNumber=20260919
@@ -137,7 +138,7 @@ EnableDashboardButton=1
 RemoveDashboardOnDetach=1
 ColorHeader=16748574
 ColorNormal=14474460
-ColorWarning=42495
+ColorWarning=42546
 ColorDanger=4678655
 EnableTelegram=0
 TelegramBotToken=

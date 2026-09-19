@@ -118,6 +118,9 @@ Two rules of thumb that follow from the arithmetic rather than from courage:
 
 ## 10.6 Verification checklist after attaching
 
+- [ ] *before* attaching: `bash tools/run_all_qa.sh` prints `ALL QA STEPS PASSED`
+      (nine mechanical gates - structure, wiring, inputs, presets, docs, secrets, stress
+      model; the tenth is your MetaEditor compile, which that script cannot run);
 - [ ] `spec:` line shows your real digits/point/lot step and `fill=` list;
 - [ ] `SYMBOL` row shows `(hedging)` or `(netting)` and matches the account;
 - [ ] `RISK` row shows the limits you think are active;

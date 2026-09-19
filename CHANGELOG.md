@@ -11,7 +11,7 @@ evaluated before every opening decision.
 
 ### Added
 
-* **EA core** - `MQL5/Experts/XAU_AVG_PRO.mq5`: 165 inputs in 17 groups, one-time
+* **EA core** - `MQL5/Experts/XAU_AVG_PRO.mq5`: 165 inputs in 15 groups, one-time
   copy into `CConfig`, `ValidateConfig()` (hard errors keep the EA running but
   refuse trading so the dashboard and log stay readable), `OnInit`/`OnDeinit`/
   `OnTick`/`OnTimer`/`OnTradeTransaction`/`OnChartEvent`, the pipeline order, the
@@ -37,17 +37,18 @@ evaluated before every opening decision.
   reset), `Statistics` (history-based daily P/L, EA cycle counters, CSV),
   `Dashboard` (34 rows, throttled render, optional pause button), `Telegram`
   (28 whitelisted commands, sanitiser, per-minute rate limit, 90 s confirmation,
-  backoff, masked token), `SelfTest` (76 deterministic assertions, no market,
+  backoff, masked token), `SelfTest` (75 deterministic assertions, no market,
   no network, no orders).
 * **Documentation** `docs/01` … `docs/14` + this changelog: architecture, generated
   input reference, state machine, risk model, averaging algorithm, cycle
   management, Telegram specification, testing strategy, known risks and
   limitations, installation, backtest protocol, stress report, code audit, risk
   disclaimer.
-* **QA tooling** `tools/`: `qa_static_check.py` (12 check families incl.
-  forbidden-marker scan, input <-> `CConfig` mirroring, 199 format strings),
-  `qa_mql_symbol_check.py` (1 000+ call sites resolved by name, arity, argument
-  type shape), `gen_input_docs.py` (docs/02 cannot drift), `gen_preset.py`
+* **QA tooling** `tools/`: `qa_static_check.py` (13 check families incl.
+  forbidden-marker scan, input <-> `CConfig` mirroring, 209 format strings),
+  `qa_mql_symbol_check.py` (1 051 call sites and 1 552 field accesses resolved against
+  the declarations, by name, arity and type shape), `gen_input_docs.py` (docs/02
+  cannot drift), `gen_preset.py`
   (`.set` presets built from the real input names), `stress_model.py` (the
   generated tables behind `docs/12`, `--json` for machines).
 * **Presets**: `presets/XAU_AVG_PRO_conservative.set`,
@@ -69,6 +70,36 @@ evaluated before every opening decision.
   by holding a losing basket across midnight.
 * One averaging layer per pipeline pass; `AllowMultipleLayersPerTick` requires
   `OneLayerPerBar=false` **and** `MinimumSecondsBetweenAveraging=0` to do anything.
+
+### Finalization & QA pass (documentation + tooling only, same build string)
+
+No file under `MQL5/` changed in this pass, which is why `XAU_EA_VERSION` is still
+`1.0.0`: a version bump that implies behaviour change would have been a lie. What
+changed is how much of the tree can be *checked*:
+
+* `tools/run_all_qa.sh` is now nine steps instead of five: preset validation, a
+  documentation-claims gate, a secret/placeholder sweep, a stress-model
+  reproducibility check, and an explicit `NOT AVAILABLE IN CURRENT ENVIRONMENT`
+  line for compilation rather than a silent skip.
+* New `tools/qa_preset_check.py`: every `.set` must be complete (165 keys), numeric-only,
+  type-legal against the input type, free of secret shapes, and its `; overrides:`
+  manifest must match the values that actually differ. Presets now carry that manifest.
+* New `tools/qa_doc_claims.py`: recomputes every count quoted in the README, CHANGELOG
+  and `docs/`, checks that every file and class the docs name exists, that every enum
+  member is used, that every input reaches `CConfig`, and that every whitelisted
+  Telegram command is documented.
+* New `tools/mql_values.py`, shared by the generator and the checker, so the two cannot
+  disagree about what `clrDodgerBlue`, `PERIOD_CURRENT` or `XAU_CORNER_LEFT_TOP` mean.
+* `gen_preset.py` lost its private duplicate of those tables (they had begun to drift).
+* Static QA grew family 13: division-safety on symbol-derived denominators (locally
+  guarded, clamped where read, or backstopped by `MathIsValidNumber`).
+* Stale numbers found by that gate and corrected: assertion count `76 -> 75` (the 76th
+  `Check(` match was the helper's own declaration), input groups `17 -> 15`, format
+  strings `199 -> 209`, block-reason phrasing aligned to the real enum prefix
+  `XAU_BLK_`, symbol-checker counts stated exactly (`1 051` calls, `1 552` field
+  accesses), `docs/02`/`docs/12` regenerated and verified byte-identical.
+* `README.md` gained a "what is verified / what a terminal must prove / what cannot be
+  proven here" table, so a reader never has to guess which claims are mechanical.
 
 ### Known limitations of this release
 

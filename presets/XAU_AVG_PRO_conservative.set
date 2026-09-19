@@ -3,6 +3,7 @@
 ; 165 inputs, 16 overridden
 ; First live candidate: FIX lots, averaging armed, all exits and limits on.
 ; Account: >= 1000 USD or a cent account. Read docs/14 before funding.
+; overrides: ActionOnAccountDD,AveragingDistancePoints,BasketCutLossMoney,BasketTPMode,BasketTakeProfitMoney,InitialLot,LogToFile,LotMode,LotMultiplier,MaximumAccountDrawdownPercent,MaximumDailyLossMoney,MaximumDailyLossPercent,MaximumFloatingLossMoney,MaximumLayer,MaximumLotPerOrder,MaximumTotalLot
 [input]
 EANameLabel=XAU_AVG_PRO
 MagicNumber=20260919
@@ -137,7 +138,7 @@ EnableDashboardButton=1
 RemoveDashboardOnDetach=1
 ColorHeader=16748574
 ColorNormal=14474460
-ColorWarning=42495
+ColorWarning=42546
 ColorDanger=4678655
 EnableTelegram=0
 TelegramBotToken=

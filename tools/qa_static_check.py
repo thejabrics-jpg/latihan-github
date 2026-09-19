@@ -162,7 +162,7 @@ def main() -> int:
         texts[f] = f.read_text(encoding="utf-8")
         cleaned[f] = strip_comments_and_strings(texts[f])
 
-    # ---------------- 1 balance + 3 forbidden markers ----------------
+    # ---------------- 1. files are whole, and no placeholder marker survives ----------------
     for f in files:
         for p in balance(texts[f]):
             problems.append(f"{f.name}: {p}")
@@ -171,7 +171,7 @@ def main() -> int:
                 line = texts[f][:m.start()].count("\n") + 1
                 problems.append(f"{f.name}:{line}: forbidden marker /{pat}/ found")
 
-    # ---------------- 2 includes ----------------
+    # ---------------- 2. every #include target exists and guards are unique ----------------
     for f in files:
         for m in re.finditer(r'#include\s+["<]([^">]+)[">]', texts[f]):
             inc = m.group(1).replace("\\", "/")
@@ -179,7 +179,7 @@ def main() -> int:
             if not any(c.exists() for c in cands):
                 problems.append(f"{f.name}: #include \"{inc}\" does not exist")
 
-    # ---------------- 4/5 inputs <-> LoadInputs <-> CConfig ----------------
+    # ---------------- 3. inputs mirror into CConfig exactly once ----------------
     ea = [f for f in files if f.suffix == ".mq5"]
     cfg_fields: set[str] = set()
     cfg_cls = None
@@ -224,14 +224,14 @@ def main() -> int:
             if a not in cfg_fields:
                 problems.append(f"LoadInputs assigns unknown CConfig field '{a}'")
 
-    # ---------------- 6 m_cfg.<field> references ----------------
+    # ---------------- 4. no config field typo ----------------
     if cfg_fields:
         for f in files:
             for m in re.finditer(r'(?:m_cfg|cfg|g_cfg)\.(\w+)(?![\w(])', cleaned[f]):
                 if m.group(1) not in cfg_fields:
                     problems.append(f"{f.name}: unknown config field '{m.group(1)}'")
 
-    # ---------------- 7 module method resolution ----------------
+    # ---------------- 5. cross-module calls exist with the right arity and type shape ----------------
     globals_map = {
         "g_spec": "CSymbolSpec", "g_log": "CLogger", "g_state": "CStateStore",
         "g_cycle": "CCycleManager", "g_exec": "CExecution", "g_entry": "CEntryEngine",
@@ -270,7 +270,7 @@ def main() -> int:
                 unresolved += 1
     infos.append(f"member-call resolution checked, {unresolved} unresolved")
 
-    # ---------------- 8 enum value usage ----------------
+    # ---------------- 6. no undeclared XAU_ identifier ----------------
     for f in files:
         declared = set(re.findall(r'(XAU_\w+)\s*=', texts[f])) | set(
             re.findall(r'#define\s+(XAU_\w+)', texts[f]))
@@ -285,7 +285,7 @@ def main() -> int:
             if u not in declared:
                 problems.append(f"{f.name}: XAU_ identifier '{u}' used but never declared")
 
-    # ---------------- 9 struct-by-value returns ----------------
+    # ---------------- 7. structs are passed by reference only ----------------
     struct_types = ("SVerdict", "SAvgPlan", "SExecResult", "SCycleData", "SDayStats",
                     "SLayerRec", "SRt", "SActionReq", "MqlCalendarValue")
     for f in files:
@@ -293,7 +293,7 @@ def main() -> int:
                               cleaned[f], re.M):
             problems.append(f"{f.name}: function returns struct '{m.group(1)}' by value (forbidden convention)")
 
-    # ---------------- 10 secrets ----------------
+    # ---------------- 8. no hard-coded Telegram token ----------------
     secret_re = re.compile(r'\b\d{8,10}:AA[A-Za-z0-9_\-]{20,}\b')
     for f in files:
         if secret_re.search(texts[f]):
@@ -301,7 +301,7 @@ def main() -> int:
         for m in re.finditer(r'TelegramBotToken\s*=\s*"([^"]*)"', texts[f]):
             if m.group(1):
                 problems.append(f"{f.name}: Telegram token must default to an empty string")
-    # ---------------- 11 duplicate method definitions ----------------
+    # ---------------- 9. no method defined twice in one file ----------------
     seen: dict[str, str] = {}
     for f in files:
         for cname, cdef in parse_classes(texts[f]).items():
@@ -311,7 +311,7 @@ def main() -> int:
                     problems.append(f"duplicate definition {key} in {f.name} and {seen[key]}")
                 seen[key] = f.name
 
-    # ---------------- 13 StringFormat specifier / argument count ---------
+    # ---------------- 10. format specifiers match their arguments ----------------
     spec_re = re.compile(r'%(?:\d+\$)?[-+ #0]*[0-9]*(?:\.[0-9]+)?(?:I64|I32|hh|h|ll|l|L|j|z|t)?[diouxXeEfFgGaAcspn%]')
     fmt_calls = 0
     for f in files:
@@ -375,7 +375,7 @@ def main() -> int:
                 problems.append(f"{f.name}:{line}: Alert used with a format string - use PrintFormat/Alert(StringFormat(...)) consistently")
     infos.append(f"format strings checked: {fmt_calls}")
 
-    # ---------------- 14 every module includes Types.mqh ----------------
+    # ---------------- 11. modules compile standalone ----------------
     for f in files:
         if f.suffix == ".mqh" and "#include \"Types.mqh\"" not in texts[f]:
             base = f.name
@@ -384,10 +384,47 @@ def main() -> int:
                 if base != "Types.mqh":
                     problems.append(f"{base}: does not include Types.mqh (module must compile standalone)")
 
-    # ---------------- 12 module include of <Trade/...> (deliberate) ------
+    # ---------------- 12. order sending stays inside Execution.mqh ----------------
     for f in files:
         if re.search(r'#include\s*<(Trade|Object|Arrays|File|String)\w*\\', texts[f]):
             infos.append(f"{f.name}: uses a standard library include")
+    # ---------------- 13. no unguarded division by a symbol-derived denominator ----------------
+    #
+    # Averaging, lots and filters divide by symbol-derived quantities constantly. A zero
+    # denominator in MQL5 yields inf/NaN, which then silently propagates into a lot size.
+    # A division is accepted when ANY of these holds:
+    #   (a) the denominator is guarded within the 12 lines above the division
+    #   (b) the expression guards itself inline (x / (p > 0 ? p : 1.0))
+    #   (c) a MathIsValidNumber()/isfinite backstop appears within 10 lines below
+    #   (d) the field is clamped non-zero where it is read (e.g. `if(m_point <= 0.0)`)
+    DENOMINATORS = {"m_point", "m_tick_value", "m_tick_size", "m_money_per_point_per_lot",
+                    "m_vol_step", "m_vol_min", "m_vol_max", "m_contract", "per_lot_pts",
+                    "risk_per_lot", "margin_per_lot", "m_atr_points", "spread_points"}
+    clamped: set[str] = set()
+    for f in files:
+        clamped |= set(re.findall(r"if\s*\(\s*(m_\w+)\s*<=\s*0\.0\s*\)", cleaned[f]))
+    for f in files:
+        lines = cleaned[f].splitlines()
+        for idx, line in enumerate(lines):
+            for m in re.finditer(r"/\s*([A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_]+\(\))?)", line):
+                den = m.group(1)
+                base = den.split(".")[-1] if "." in den else den
+                if base.endswith("()"):
+                    base = base[:-2]
+                if base not in DENOMINATORS and den not in ("Point()", ):
+                    continue
+                if "." not in den and base not in DENOMINATORS:
+                    continue
+                above = " ".join(lines[max(0, idx - 12):idx + 1])
+                below = " ".join(lines[idx:idx + 11])
+                name = base if base in DENOMINATORS else "m_point"
+                guarded = (re.search(rf"{name}\s*<=\s*0|{name}\s*>\s*0|{name}\s*<\s*1e|MathMax\([^)]*{name}", above)
+                           or re.search(rf"{name}\s*>\s*0\s*\?", line)
+                           or "MathIsValidNumber" in below
+                           or name in clamped)
+                if not guarded:
+                    problems.append(f"{f.name}:{idx + 1}: division by {den} has no guard and no clamp")
+
 
     print("=" * 72)
     print("XAU_AVG_PRO static QA")
