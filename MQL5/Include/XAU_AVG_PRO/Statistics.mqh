@@ -104,7 +104,7 @@ private:
       int total = HistoryDealsTotal();
       for(int i = 0; i < total; i++)
         {
-         long deal = HistoryDealGetTicket(i);
+         long deal = (long)HistoryDealGetTicket(i);
          if(deal <= 0)
             continue;
          if(HistoryDealGetInteger(deal, DEAL_MAGIC) != m_cfg.MagicNumber)
