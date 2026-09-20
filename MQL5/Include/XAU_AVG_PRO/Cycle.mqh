@@ -209,7 +209,7 @@ public:
       int total = PositionsTotal();
       for(int i = 0; i < total; i++)
         {
-         long ticket = PositionGetTicket(i);
+         long ticket = (long)PositionGetTicket(i);
          if(ticket <= 0)
             continue;
          if(PositionGetInteger(POSITION_MAGIC) != m_cfg.MagicNumber)
