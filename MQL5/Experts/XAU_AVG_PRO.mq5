@@ -831,7 +831,7 @@ void LoadPersistedFlags(void)
    g_rt.peak_equity = g_state.GetDblOr("peak_equity", 0.0);
    g_rt.worst_equity = AccountInfoDouble(ACCOUNT_EQUITY);
    g_cfg.user_paused    = g_state.GetBoolOr("ovr_paused", false);
-   long flags = g_state.GetIntOr("ovr_flags", 0);
+   int flags = (int)g_state.GetIntOr("ovr_flags", 0);
    if(flags == 0)
       return;
    if(!g_cfg.PersistTelegramOverrides)
@@ -1467,7 +1467,7 @@ void HandleCommand(const string name, const string args)
      }
    if(name == "version")
      {
-      g_tg.Reply(XAU_EA_NAME + " v" + XAU_EA_VERSION + " | build " + __DATE__ +
+      g_tg.Reply(XAU_EA_NAME + " v" + XAU_EA_VERSION +
                  "\nsymbol " + g_spec.Symbol() + " | magic " + IntegerToString(g_cfg.MagicNumber));
       return;
      }
