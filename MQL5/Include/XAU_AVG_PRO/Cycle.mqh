@@ -45,23 +45,23 @@ private:
    void LoadCachedLayers(void)
      {
       ArrayResize(m_layers, 0);
-      if(m_store == NULL || !m_store->Enabled())
+      if(m_store == NULL || !m_store.Enabled())
          return;
       long count = 0;
-      if(!m_store->GetInt("lay_count", count) || count <= 0)
+      if(!m_store.GetInt("lay_count", count) || count <= 0)
          return;
       for(int i = 0; i < (int)count && i < XAU_MAX_LAYERS_HARD; i++)
         {
          string prefix = "lay" + IntegerToString(i) + "_";
          SLayerRec rec;
          long tk = 0;
-         if(!m_store->GetInt(prefix + "ticket", tk))
+         if(!m_store.GetInt(prefix + "ticket", tk))
             break;
          rec.ticket     = tk;
          rec.index      = i + 1;
-         rec.volume     = m_store->GetDblOr(prefix + "vol", 0.0);
-         rec.open_price = m_store->GetDblOr(prefix + "price", 0.0);
-         rec.open_time  = m_store->GetTimeOr(prefix + "time", 0);
+         rec.volume     = m_store.GetDblOr(prefix + "vol", 0.0);
+         rec.open_price = m_store.GetDblOr(prefix + "price", 0.0);
+         rec.open_time  = m_store.GetTimeOr(prefix + "time", 0);
          if(rec.volume <= 0.0)
             break;
          int n = ArraySize(m_layers);
@@ -71,54 +71,54 @@ private:
      }
    void SaveLayers(void)
      {
-      if(m_store == NULL || !m_store->Enabled())
+      if(m_store == NULL || !m_store.Enabled())
          return;
-      m_store->SetInt("lay_count", ArraySize(m_layers));
+      m_store.SetInt("lay_count", ArraySize(m_layers));
       for(int i = 0; i < ArraySize(m_layers); i++)
         {
          string prefix = "lay" + IntegerToString(i) + "_";
-         m_store->SetInt(prefix + "ticket", m_layers[i].ticket);
-         m_store->SetDbl(prefix + "vol", m_layers[i].volume);
-         m_store->SetDbl(prefix + "price", m_layers[i].open_price);
-         m_store->SetTime(prefix + "time", m_layers[i].open_time);
+         m_store.SetInt(prefix + "ticket", m_layers[i].ticket);
+         m_store.SetDbl(prefix + "vol", m_layers[i].volume);
+         m_store.SetDbl(prefix + "price", m_layers[i].open_price);
+         m_store.SetTime(prefix + "time", m_layers[i].open_time);
         }
       for(int i = ArraySize(m_layers); i < ArraySize(m_layers) + 4; i++)
-         m_store->Erase("lay" + IntegerToString(i) + "_ticket");
+         m_store.Erase("lay" + IntegerToString(i) + "_ticket");
      }
    void SaveCycle(void)
      {
-      if(m_store == NULL || !m_store->Enabled())
+      if(m_store == NULL || !m_store.Enabled())
          return;
-      m_store->SetInt("cyc_id", m_c.id);
-      m_store->SetInt("cyc_next", m_next_cycle_id);
-      m_store->SetInt("cyc_dir", (long)m_c.dir);
-      m_store->SetTime("cyc_start", m_c.start_time);
-      m_store->SetDbl("cyc_init_vol", m_c.initial_volume);
-      m_store->SetDbl("cyc_total_vol", m_c.total_volume);
-      m_store->SetDbl("cyc_avg", m_c.avg_price);
-      m_store->SetDbl("cyc_bal_start", m_c.balance_at_start);
-      m_store->SetDbl("cyc_dd_money", m_c.max_dd_money);
-      m_store->SetDbl("cyc_dd_percent", m_c.max_dd_percent);
-      m_store->SetTime("cyc_last_fill", m_c.last_fill_time);
-      m_store->SetDbl("cyc_last_price", m_c.last_fill_price);
-      m_store->SetBool("cyc_active", m_c.active);
+      m_store.SetInt("cyc_id", m_c.id);
+      m_store.SetInt("cyc_next", m_next_cycle_id);
+      m_store.SetInt("cyc_dir", (long)m_c.dir);
+      m_store.SetTime("cyc_start", m_c.start_time);
+      m_store.SetDbl("cyc_init_vol", m_c.initial_volume);
+      m_store.SetDbl("cyc_total_vol", m_c.total_volume);
+      m_store.SetDbl("cyc_avg", m_c.avg_price);
+      m_store.SetDbl("cyc_bal_start", m_c.balance_at_start);
+      m_store.SetDbl("cyc_dd_money", m_c.max_dd_money);
+      m_store.SetDbl("cyc_dd_percent", m_c.max_dd_percent);
+      m_store.SetTime("cyc_last_fill", m_c.last_fill_time);
+      m_store.SetDbl("cyc_last_price", m_c.last_fill_price);
+      m_store.SetBool("cyc_active", m_c.active);
       SaveLayers();
      }
    void RestoreCycle(void)
      {
-      m_c.id               = m_store->GetIntOr("cyc_id", 0);
-      m_next_cycle_id      = m_store->GetIntOr("cyc_next", 1);
-      m_c.dir              = (ENUM_POSITION_TYPE)m_store->GetIntOr("cyc_dir", (long)POSITION_TYPE_BUY);
-      m_c.start_time       = m_store->GetTimeOr("cyc_start", 0);
-      m_c.initial_volume   = m_store->GetDblOr("cyc_init_vol", 0.0);
-      m_c.balance_at_start = m_store->GetDblOr("cyc_bal_start", 0.0);
-      m_c.max_dd_money     = m_store->GetDblOr("cyc_dd_money", 0.0);
-      m_c.max_dd_percent   = m_store->GetDblOr("cyc_dd_percent", 0.0);
-      m_c.last_fill_time   = m_store->GetTimeOr("cyc_last_fill", 0);
-      m_c.last_fill_price  = m_store->GetDblOr("cyc_last_price", 0.0);
-      m_c.total_volume     = m_store->GetDblOr("cyc_total_vol", 0.0);
-      m_c.avg_price        = m_store->GetDblOr("cyc_avg", 0.0);
-      m_c.active           = m_store->GetBoolOr("cyc_active", false);
+      m_c.id               = m_store.GetIntOr("cyc_id", 0);
+      m_next_cycle_id      = m_store.GetIntOr("cyc_next", 1);
+      m_c.dir              = (ENUM_POSITION_TYPE)m_store.GetIntOr("cyc_dir", (long)POSITION_TYPE_BUY);
+      m_c.start_time       = m_store.GetTimeOr("cyc_start", 0);
+      m_c.initial_volume   = m_store.GetDblOr("cyc_init_vol", 0.0);
+      m_c.balance_at_start = m_store.GetDblOr("cyc_bal_start", 0.0);
+      m_c.max_dd_money     = m_store.GetDblOr("cyc_dd_money", 0.0);
+      m_c.max_dd_percent   = m_store.GetDblOr("cyc_dd_percent", 0.0);
+      m_c.last_fill_time   = m_store.GetTimeOr("cyc_last_fill", 0);
+      m_c.last_fill_price  = m_store.GetDblOr("cyc_last_price", 0.0);
+      m_c.total_volume     = m_store.GetDblOr("cyc_total_vol", 0.0);
+      m_c.avg_price        = m_store.GetDblOr("cyc_avg", 0.0);
+      m_c.active           = m_store.GetBoolOr("cyc_active", false);
      }
    /// Add a layer record keeping index order.
    void PushLayer(const long ticket, const double volume, const double price, const datetime when)
@@ -168,7 +168,7 @@ public:
       m_c.layers        = 0;
       m_c.active        = false;
       m_c.exit_code     = 0;
-      m_have_state      = (store != NULL && store->Load());
+      m_have_state      = (store != NULL && store.Load());
       if(m_have_state)
         {
          RestoreCycle();
