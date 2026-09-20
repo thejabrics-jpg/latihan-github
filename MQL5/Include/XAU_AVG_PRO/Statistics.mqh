@@ -38,52 +38,52 @@ private:
    string Key(const string name) { return("d_" + name); }
    void LoadDay(void)
      {
-      if(m_store == NULL || !m_store->Enabled())
+      if(m_store == NULL || !m_store.Enabled())
         {
          m_partial = true;
          return;
         }
       long day = 0;
-      if(!m_store->GetInt(Key("day"), day) || day != (long)m_d.day)
+      if(!m_store.GetInt(Key("day"), day) || day != (long)m_d.day)
         {
          m_partial = true;
          return;
         }
-      m_d.start_balance      = m_store->GetDblOr(Key("start_balance"), AccountInfoDouble(ACCOUNT_BALANCE));
-      m_d.start_equity       = m_store->GetDblOr(Key("start_equity"), AccountInfoDouble(ACCOUNT_EQUITY));
-      m_d.closed_cycles      = (int)m_store->GetIntOr(Key("cycles"), 0);
-      m_d.win_cycles          = (int)m_store->GetIntOr(Key("wins"), 0);
-      m_d.loss_cycles         = (int)m_store->GetIntOr(Key("losses"), 0);
-      m_d.entries             = (int)m_store->GetIntOr(Key("entries"), 0);
-      m_d.avg_orders          = (int)m_store->GetIntOr(Key("avgs"), 0);
-      m_d.cut_loss_events     = (int)m_store->GetIntOr(Key("cutloss"), 0);
-      m_d.basket_tp_events    = (int)m_store->GetIntOr(Key("tp"), 0);
-      m_d.max_layers_seen     = (int)m_store->GetIntOr(Key("maxlayer"), 0);
-      m_d.max_basket_volume   = m_store->GetDblOr(Key("maxvol"), 0.0);
-      m_d.max_dd_money        = m_store->GetDblOr(Key("maxdd"), 0.0);
-      m_d.max_dd_percent      = m_store->GetDblOr(Key("maxddpct"), 0.0);
-      m_d.blocked_events      = (int)m_store->GetIntOr(Key("blocked"), 0);
+      m_d.start_balance      = m_store.GetDblOr(Key("start_balance"), AccountInfoDouble(ACCOUNT_BALANCE));
+      m_d.start_equity       = m_store.GetDblOr(Key("start_equity"), AccountInfoDouble(ACCOUNT_EQUITY));
+      m_d.closed_cycles      = (int)m_store.GetIntOr(Key("cycles"), 0);
+      m_d.win_cycles          = (int)m_store.GetIntOr(Key("wins"), 0);
+      m_d.loss_cycles         = (int)m_store.GetIntOr(Key("losses"), 0);
+      m_d.entries             = (int)m_store.GetIntOr(Key("entries"), 0);
+      m_d.avg_orders          = (int)m_store.GetIntOr(Key("avgs"), 0);
+      m_d.cut_loss_events     = (int)m_store.GetIntOr(Key("cutloss"), 0);
+      m_d.basket_tp_events    = (int)m_store.GetIntOr(Key("tp"), 0);
+      m_d.max_layers_seen     = (int)m_store.GetIntOr(Key("maxlayer"), 0);
+      m_d.max_basket_volume   = m_store.GetDblOr(Key("maxvol"), 0.0);
+      m_d.max_dd_money        = m_store.GetDblOr(Key("maxdd"), 0.0);
+      m_d.max_dd_percent      = m_store.GetDblOr(Key("maxddpct"), 0.0);
+      m_d.blocked_events      = (int)m_store.GetIntOr(Key("blocked"), 0);
       m_partial               = false;
      }
    void SaveDay(void)
      {
-      if(m_store == NULL || !m_store->Enabled())
+      if(m_store == NULL || !m_store.Enabled())
          return;
-      m_store->SetInt(Key("day"), (long)m_d.day);
-      m_store->SetDbl(Key("start_balance"), m_d.start_balance);
-      m_store->SetDbl(Key("start_equity"), m_d.start_equity);
-      m_store->SetInt(Key("cycles"), m_d.closed_cycles);
-      m_store->SetInt(Key("wins"), m_d.win_cycles);
-      m_store->SetInt(Key("losses"), m_d.loss_cycles);
-      m_store->SetInt(Key("entries"), m_d.entries);
-      m_store->SetInt(Key("avgs"), m_d.avg_orders);
-      m_store->SetInt(Key("cutloss"), m_d.cut_loss_events);
-      m_store->SetInt(Key("tp"), m_d.basket_tp_events);
-      m_store->SetInt(Key("maxlayer"), m_d.max_layers_seen);
-      m_store->SetDbl(Key("maxvol"), m_d.max_basket_volume);
-      m_store->SetDbl(Key("maxdd"), m_d.max_dd_money);
-      m_store->SetDbl(Key("maxddpct"), m_d.max_dd_percent);
-      m_store->SetInt(Key("blocked"), m_d.blocked_events);
+      m_store.SetInt(Key("day"), (long)m_d.day);
+      m_store.SetDbl(Key("start_balance"), m_d.start_balance);
+      m_store.SetDbl(Key("start_equity"), m_d.start_equity);
+      m_store.SetInt(Key("cycles"), m_d.closed_cycles);
+      m_store.SetInt(Key("wins"), m_d.win_cycles);
+      m_store.SetInt(Key("losses"), m_d.loss_cycles);
+      m_store.SetInt(Key("entries"), m_d.entries);
+      m_store.SetInt(Key("avgs"), m_d.avg_orders);
+      m_store.SetInt(Key("cutloss"), m_d.cut_loss_events);
+      m_store.SetInt(Key("tp"), m_d.basket_tp_events);
+      m_store.SetInt(Key("maxlayer"), m_d.max_layers_seen);
+      m_store.SetDbl(Key("maxvol"), m_d.max_basket_volume);
+      m_store.SetDbl(Key("maxdd"), m_d.max_dd_money);
+      m_store.SetDbl(Key("maxddpct"), m_d.max_dd_percent);
+      m_store.SetInt(Key("blocked"), m_d.blocked_events);
      }
    /// Read the account history for the current server day.
    void ReadHistory(const bool force)
