@@ -885,6 +885,10 @@ void TrySaveState(const bool force)
 //==================================================================//
 void UpdateMarketData(void)
   {
+   // Refresh the cached broker quote on every market tick. Without this,
+   // CSymbolSpec keeps the initialization tick forever, so QuoteAgeSeconds()
+   // grows for the entire tester run and Risk blocks every entry/averaging.
+   g_spec.UpdateQuote();
    g_rt.bid = g_spec.Bid();
    g_rt.ask = g_spec.Ask();
    g_rt.spread_points = g_spec.SpreadPoints();
