@@ -82,7 +82,7 @@ private:
    void Act(const ENUM_XAU_ACTION action, const ENUM_XAU_BLOCK code, const string why,
             const datetime until, SActionReq &act)
      {
-      m_state->SetRiskBlock(code, why, until);
+      m_state.SetRiskBlock(code, why, until);
       m_hard_limit_hits++;
       switch(action)
         {
@@ -104,8 +104,8 @@ private:
         }
       if(StringLen(act.reason) == 0)
          act.reason = why;
-      m_log.Throttled(1, XAU_T_MAXDD, m_state->BlockName(code),
-                      StringFormat("%s | action=%s | %s", m_state->BlockName(code), EnumToString(action), why), 60);
+      m_log.Throttled(1, XAU_T_MAXDD, m_state.BlockName(code),
+                      StringFormat("%s | action=%s | %s", m_state.BlockName(code), EnumToString(action), why), 60);
      }
 
 public:
@@ -253,22 +253,22 @@ public:
    /// configured hysteresis, or once the day has rolled over.
    void ResetCheck(SRt &rt)
      {
-      if(!m_state->RiskBlocked())
+      if(!m_state.RiskBlocked())
          return;
-      if(m_state->Emergency())                 // emergency is manual only
+      if(m_state.Emergency())                 // emergency is manual only
          return;
       datetime now = XauNow();
-      datetime until = m_state->RiskUntil();
+      datetime until = m_state.RiskUntil();
       if(until > 0 && now < until)
          return;
       // A daily-loss block carries block_until = next server midnight, so
       // reaching this point means the day has rolled over.
-      if(m_state->RiskCode() == XAU_BLK_DAILY_LOSS)
+      if(m_state.RiskCode() == XAU_BLK_DAILY_LOSS)
         {
          if(!m_cfg.AutoResetRiskBlock)
             return;
          m_daily_hit = false;
-         m_state->ClearRiskBlock("new server day, daily limits re-armed");
+         m_state.ClearRiskBlock("new server day, daily limits re-armed");
          return;
         }
       if(!m_cfg.AutoResetRiskBlock)
@@ -286,7 +286,7 @@ public:
          clear = false;
       if(clear)
         {
-         m_state->ClearRiskBlock("conditions back inside hysteresis band");
+         m_state.ClearRiskBlock("conditions back inside hysteresis band");
          m_account_dd_hit = false;
          m_daily_hit      = false;
          m_float_hit      = false;
@@ -300,25 +300,25 @@ public:
    void CommonGates(const ENUM_XAU_INTENT intent, SVerdict &v)
      {
       XauPassV(v);
-      if(m_state->Emergency())
+      if(m_state.Emergency())
         {
          XauFailV(v, XAU_BLK_EMERGENCY, "EMERGENCY STOP is active - reset it explicitly (Telegram /emergency_clear or input)", 0, 0.0);
          return;
         }
-      if(m_state->ErrorFlag())
+      if(m_state.ErrorFlag())
         {
-         XauFailV(v, XAU_BLK_STATE_ERROR, "EA state ERROR: " + m_state->ErrorText(), 0, 0.0);
+         XauFailV(v, XAU_BLK_STATE_ERROR, "EA state ERROR: " + m_state.ErrorText(), 0, 0.0);
          return;
         }
-      if(m_state->Paused())
+      if(m_state.Paused())
         {
          XauFailV(v, XAU_BLK_PAUSED, "EA is paused by the operator", 0, 0.0);
          return;
         }
-      if(m_state->RiskBlocked())
+      if(m_state.RiskBlocked())
         {
-         XauFailV(v, m_state->RiskCode(), "risk block active: " + m_state->RiskReason(),
-                  m_state->RiskUntil(), 0.0);
+         XauFailV(v, m_state.RiskCode(), "risk block active: " + m_state.RiskReason(),
+                  m_state.RiskUntil(), 0.0);
          return;
         }
       if(!m_spec.Valid())
@@ -402,7 +402,7 @@ public:
       if(rt.next_entry_allowed_at > 0 && XauNow() < rt.next_entry_allowed_at)
         {
          XauFailV(v, XAU_BLK_COOLDOWN,
-                  StringFormat("cooldown after %s: %d s left", m_state->BlockName(XAU_BLK_COOLDOWN),
+                  StringFormat("cooldown after %s: %d s left", m_state.BlockName(XAU_BLK_COOLDOWN),
                                (int)(rt.next_entry_allowed_at - XauNow())), rt.next_entry_allowed_at, 0.0);
          m_blocks_entry++;
          return;
@@ -428,7 +428,7 @@ public:
 
       // sizing (max lot per order + max total exposure are enforced here)
       SVerdict lv;
-      m_lots->Resolve(1, is_buy, price, m_cycle.TotalExposure(), lot, lv);
+      m_lots.Resolve(1, is_buy, price, m_cycle.TotalExposure(), lot, lv);
       if(!lv.allowed)
         {
          XauFailV(v, lv.code, lv.reason, 0, lv.value);
@@ -437,7 +437,7 @@ public:
         }
       // margin safety on the projected position
       SVerdict mv;
-      m_lots->CheckMargin(is_buy, lot, price, mv);
+      m_lots.CheckMargin(is_buy, lot, price, mv);
       if(!mv.allowed)
         {
          XauFailV(v, mv.code, mv.reason, 0, mv.value);
@@ -446,7 +446,7 @@ public:
         }
       // market filters, then news
       SVerdict fv;
-      m_filters->Check(XAU_INT_ENTRY, rt, fv);
+      m_filters.Check(XAU_INT_ENTRY, rt, fv);
       if(!fv.allowed)
         {
          XauFailV(v, fv.code, fv.reason, fv.block_until, fv.value);
@@ -454,7 +454,7 @@ public:
          return;
         }
       SVerdict nv;
-      m_news->Check(XAU_INT_ENTRY, nv);
+      m_news.Check(XAU_INT_ENTRY, nv);
       if(!nv.allowed)
         {
          XauFailV(v, nv.code, nv.reason, nv.block_until, nv.value);
@@ -513,7 +513,7 @@ public:
         }
       // timing / duplicate protection of the geometry
       SVerdict tv;
-      m_avg->CheckTiming(plan, rt, bar_time, tv);
+      m_avg.CheckTiming(plan, rt, bar_time, tv);
       if(!tv.allowed)
         {
          XauFailV(v, tv.code, tv.reason, tv.block_until, tv.value);
@@ -528,7 +528,7 @@ public:
         }
       // sizing: MAX LOT PER ORDER and MAX TOTAL EXPOSURE
       SVerdict lv;
-      m_lots->Resolve(m_cycle.LayerCount() + 1, m_cycle.IsBuyBasket(), (m_cycle.IsBuyBasket() ? m_spec.Ask() : m_spec.Bid()),
+      m_lots.Resolve(m_cycle.LayerCount() + 1, m_cycle.IsBuyBasket(), (m_cycle.IsBuyBasket() ? m_spec.Ask() : m_spec.Bid()),
                       m_cycle.TotalExposure(), lot, lv);
       if(!lv.allowed)
         {
@@ -537,7 +537,7 @@ public:
          return;
         }
       SVerdict mv;
-      m_lots->CheckMargin(m_cycle.IsBuyBasket(), lot, (m_cycle.IsBuyBasket() ? m_spec.Ask() : m_spec.Bid()), mv);
+      m_lots.CheckMargin(m_cycle.IsBuyBasket(), lot, (m_cycle.IsBuyBasket() ? m_spec.Ask() : m_spec.Bid()), mv);
       if(!mv.allowed)
         {
          XauFailV(v, mv.code, mv.reason, 0, mv.value);
@@ -545,7 +545,7 @@ public:
          return;
         }
       SVerdict fv;
-      m_filters->Check(XAU_INT_AVERAGING, rt, fv);
+      m_filters.Check(XAU_INT_AVERAGING, rt, fv);
       if(!fv.allowed)
         {
          XauFailV(v, fv.code, fv.reason, fv.block_until, fv.value);
@@ -553,7 +553,7 @@ public:
          return;
         }
       SVerdict nv;
-      m_news->Check(XAU_INT_AVERAGING, nv);
+      m_news.Check(XAU_INT_AVERAGING, nv);
       if(!nv.allowed)
         {
          XauFailV(v, nv.code, nv.reason, nv.block_until, nv.value);
