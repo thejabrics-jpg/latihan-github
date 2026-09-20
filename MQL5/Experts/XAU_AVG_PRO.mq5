@@ -282,6 +282,9 @@ bool     g_close_notice_set = false;
 int      g_close_notice_code = 0;
 double   g_close_notice_net = 0.0;
 string   g_close_notice_reason = "";
+int      g_close_notice_layers = 0;
+double   g_close_notice_volume = 0.0;
+double   g_close_notice_avg = 0.0;
 
 //------------------------------------------------------------------//
 // Forward declarations of the orchestration functions in this file |
@@ -952,15 +955,18 @@ void OnCycleFinished(const int exit_code, const string reason, const double net_
       g_rt.next_entry_allowed_at = XauNow() + (datetime)(minutes * 60);
    if(g_cfg.RequireNewSignalAfterCycleClose)
       g_entry.ResetState(true);
+   int    closed_layers = (g_close_notice_set ? g_close_notice_layers : g_cycle.LayerCount());
+   double closed_volume = (g_close_notice_set ? g_close_notice_volume : g_cycle.TotalVolume());
+   double closed_avg    = (g_close_notice_set ? g_close_notice_avg : g_cycle.AvgPrice());
    g_stats.RegisterCycleEnd(g_cycle.CycleId(), exit_code, net_pl);
    g_closing_basket = false;
    g_sm.SetClosing(false);
    TrySaveState(true);
    string txt = StringFormat("cycle #%d CLOSED | reason=%s exit=%d | net=%s layers=%d vol=%s avg=%s | worst DD %.2f (%.2f%%) | today: realized %s, %d cycle(s)",
                              g_cycle.CycleId(), reason, exit_code, XauMoney(net_pl),
-                             g_cycle.LayerCount(),
-                             DoubleToString(g_cycle.TotalVolume(), g_spec.VolumeDigits()),
-                             XauPrice(g_cycle.AvgPrice()), g_cycle.MaxDDMoney(), g_cycle.MaxDDPercent(),
+                             closed_layers,
+                             DoubleToString(closed_volume, g_spec.VolumeDigits()),
+                             XauPrice(closed_avg), g_cycle.MaxDDMoney(), g_cycle.MaxDDPercent(),
                              XauMoney(g_stats.RealizedToday()), DayClosedCount());
    g_log.Info(exit_code == 2 ? XAU_T_CUT : (exit_code == 1 ? XAU_T_TP : XAU_T_STATE), txt);
    if(exit_code == 1)
@@ -985,14 +991,23 @@ bool CloseBasket(const int exit_code, const string reason)
    int left = g_basket.CloseAllLayers(exit_code, reason);
    g_sm.SetClosing(false);
    g_closing_basket = false;
-   if(left == 0)
+   // Preserve the close intent and the pre-close basket snapshot even when
+   // the execution layer reports a stale position count for one tick. The
+   // next Reconcile() may retire the cycle before OnCycleFinished() runs.
+   if(!g_close_notice_set)
      {
-      // OnTick() observes the open->flat transition and calls
-      // OnCycleFinished() exactly once, so nothing is counted twice
       g_close_notice_set    = true;
       g_close_notice_code   = exit_code;
       g_close_notice_net    = net_before;
       g_close_notice_reason = reason;
+      g_close_notice_layers = g_cycle.LayerCount();
+      g_close_notice_volume = g_cycle.TotalVolume();
+      g_close_notice_avg    = g_cycle.AvgPrice();
+     }
+   if(left == 0)
+     {
+      // OnTick() observes the open->flat transition and calls
+      // OnCycleFinished() exactly once, so nothing is counted twice.
       return(true);
      }
    g_log.Error(XAU_T_EXEC, StringFormat("basket not fully closed, %d position(s) left - retrying on the next tick (state stays CLOSING/IN_CYCLE)", left));
@@ -1223,6 +1238,11 @@ void RunPipeline(void)
    // 2 - rebuild the basket from the account, then basket maths
    g_cycle.Reconcile();
    g_basket.Recompute();
+   // A close request may have executed, while the cycle manager only observes
+   // the flat account on the following reconciliation. Do not allow the entry
+   // engine to open a replacement cycle before the pending close is recorded.
+   if(g_close_notice_set && !g_cycle.IsActive())
+      return;
    double balance = AccountInfoDouble(ACCOUNT_BALANCE);
    double equity  = AccountInfoDouble(ACCOUNT_EQUITY);
    if(g_rt.worst_equity <= 0.0 || equity < g_rt.worst_equity)
@@ -2158,6 +2178,13 @@ void OnTick(void)
       double net    = (g_close_notice_set ? g_close_notice_net : 0.0);
       g_prev_cycle_active = false;
       OnCycleFinished(code, reason, net);
+      g_close_notice_set    = false;
+      g_close_notice_code   = 0;
+      g_close_notice_net    = 0.0;
+      g_close_notice_reason = "";
+      g_close_notice_layers = 0;
+      g_close_notice_volume = 0.0;
+      g_close_notice_avg    = 0.0;
      }
    else
       g_prev_cycle_active = g_cycle.IsActive();
