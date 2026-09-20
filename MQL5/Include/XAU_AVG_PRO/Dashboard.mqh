@@ -209,7 +209,7 @@ public:
       // hide leftovers from a previous, longer panel
       for(int i = m_pending; i < ArraySize(m_created); i++)
          ObjectSetString(m_chart, m_created[i], OBJPROP_TEXT, "");
-      ObjectSetString(m_chart, ButtonName(), OBJPROP_CAPTION,
+      ObjectSetString(m_chart, ButtonName(), OBJPROP_TEXT,
                       (m_cfg.user_paused ? "RESUME" : "PAUSE"));
       ChartRedraw(m_chart);
      }
