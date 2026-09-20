@@ -328,8 +328,8 @@ public:
          return;
         }
       m_offset = 0;
-      if(m_store != NULL && m_store->Enabled())
-         m_offset = m_store->GetIntOr("tg_offset", 0);
+      if(m_store != NULL && m_store.Enabled())
+         m_offset = m_store.GetIntOr("tg_offset", 0);
       m_enabled = true;
       m_log.Info(XAU_T_TG, StringFormat("enabled for chat %s, polling every %d s. Terminal must allow %s in Tools>Options>Expert Advisors",
                                         m_cfg.TelegramChatID, m_cfg.TelegramPollingIntervalSeconds, XAU_TG_API));
@@ -340,7 +340,7 @@ public:
         {
          m_enabled = false;
          m_disabled_why = "getMe failed: " + m_last_error +
-                          " | add " + XAU_TG_API + " to the allowed URL list (Tools -> Options -> Expert Advisors)";
+                          " | add " + XAU_TG_API + " to the allowed URL list (Tools . Options . Expert Advisors)";
          m_log.Error(XAU_T_TG, m_disabled_why);
          return;
         }
@@ -465,8 +465,8 @@ public:
          if(uid > m_offset)
            {
             m_offset = uid;
-            if(m_store != NULL && m_store->Enabled())
-               m_store->SetInt("tg_offset", m_offset);
+            if(m_store != NULL && m_store.Enabled())
+               m_store.SetInt("tg_offset", m_offset);
            }
          long chat = 0;
          if(!ExtractChatId(chunk, chat))
