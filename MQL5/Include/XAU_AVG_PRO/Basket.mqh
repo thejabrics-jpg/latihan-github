@@ -379,7 +379,7 @@ public:
             int total = PositionsTotal();
             for(int i = 0; i < total; i++)
               {
-               long t2 = PositionGetTicket(i);
+               long t2 = (long)PositionGetTicket(i);
                if(t2 <= 0)
                   continue;
                if(PositionGetInteger(POSITION_MAGIC) == m_cfg.MagicNumber &&
@@ -429,7 +429,7 @@ public:
       int total  = PositionsTotal();
       for(int i = total - 1; i >= 0; i--)
         {
-         long tk = PositionGetTicket(i);
+         long tk = (long)PositionGetTicket(i);
          if(tk <= 0)
             continue;
          if(PositionGetInteger(POSITION_MAGIC) != m_cfg.MagicNumber)
@@ -456,7 +456,7 @@ public:
       int closed = 0;
       for(int i = PositionsTotal() - 1; i >= 0; i--)
         {
-         long tk = PositionGetTicket(i);
+         long tk = (long)PositionGetTicket(i);
          if(tk <= 0)
             continue;
          if(PositionGetInteger(POSITION_MAGIC) != m_cfg.MagicNumber)
