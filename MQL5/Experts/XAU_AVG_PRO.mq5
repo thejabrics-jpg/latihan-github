@@ -26,24 +26,24 @@
 #property description "hard exposure and drawdown protection, filters, dashboard, Telegram, daily report."
 #property description "Averaging can lose money faster than a single-stop EA. Use the demo first."
 
-#include "Include\XAU_AVG_PRO\Types.mqh"
-#include "Include\XAU_AVG_PRO\Logger.mqh"
-#include "Include\XAU_AVG_PRO\BrokerSpec.mqh"
-#include "Include\XAU_AVG_PRO\StateStore.mqh"
-#include "Include\XAU_AVG_PRO\Cycle.mqh"
-#include "Include\XAU_AVG_PRO\Execution.mqh"
-#include "Include\XAU_AVG_PRO\Entry.mqh"
-#include "Include\XAU_AVG_PRO\Averaging.mqh"
-#include "Include\XAU_AVG_PRO\Lots.mqh"
-#include "Include\XAU_AVG_PRO\MarketFilters.mqh"
-#include "Include\XAU_AVG_PRO\News.mqh"
-#include "Include\XAU_AVG_PRO\Basket.mqh"
-#include "Include\XAU_AVG_PRO\State.mqh"
-#include "Include\XAU_AVG_PRO\Risk.mqh"
-#include "Include\XAU_AVG_PRO\Statistics.mqh"
-#include "Include\XAU_AVG_PRO\Dashboard.mqh"
-#include "Include\XAU_AVG_PRO\Telegram.mqh"
-#include "Include\XAU_AVG_PRO\SelfTest.mqh"
+#include <XAU_AVG_PRO/Types.mqh>
+#include <XAU_AVG_PRO/Logger.mqh>
+#include <XAU_AVG_PRO/BrokerSpec.mqh>
+#include <XAU_AVG_PRO/StateStore.mqh>
+#include <XAU_AVG_PRO/Cycle.mqh>
+#include <XAU_AVG_PRO/Execution.mqh>
+#include <XAU_AVG_PRO/Entry.mqh>
+#include <XAU_AVG_PRO/Averaging.mqh>
+#include <XAU_AVG_PRO/Lots.mqh>
+#include <XAU_AVG_PRO/MarketFilters.mqh>
+#include <XAU_AVG_PRO/News.mqh>
+#include <XAU_AVG_PRO/Basket.mqh>
+#include <XAU_AVG_PRO/State.mqh>
+#include <XAU_AVG_PRO/Risk.mqh>
+#include <XAU_AVG_PRO/Statistics.mqh>
+#include <XAU_AVG_PRO/Dashboard.mqh>
+#include <XAU_AVG_PRO/Telegram.mqh>
+#include <XAU_AVG_PRO/SelfTest.mqh>
 
 //==================================================================//
 // SECTION 1 - INPUTS                                               |
