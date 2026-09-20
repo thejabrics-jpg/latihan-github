@@ -1533,7 +1533,9 @@ void HandleCommand(const string name, const string args)
       if(g_cfg.RequireConfirmationForDestructive)
         {
          g_tg.ArmConfirmation(name);
-         string upper_name = name;\n         StringToUpper(upper_name);\n         g_tg.Reply("CONFIRM " + upper_name + ":\nReply with /confirm_" + name + " within 90 seconds.\nNothing has been executed.");
+         string upper_name = name;
+         StringToUpper(upper_name);
+         g_tg.Reply("CONFIRM " + upper_name + ":\nReply with /confirm_" + name + " within 90 seconds.\nNothing has been executed.");
          return;
         }
       int n = (name == "closeall" ? g_basket.CloseEverything()
