@@ -456,7 +456,24 @@ public:
          m_layers[n].open_price = price;
          m_layers[n].open_time  = when;
         }
-      m_c.layers       = ArraySize(m_layers);
+
+      // Keep cached totals coherent immediately after a verified fill.
+      // This makes post-fill logs/state accurate even before the next
+      // full account reconciliation.
+      double vol_sum = 0.0;
+      double cost    = 0.0;
+      for(int i = 0; i < ArraySize(m_layers); i++)
+        {
+         vol_sum += m_layers[i].volume;
+         cost    += m_layers[i].open_price * m_layers[i].volume;
+        }
+      m_c.layers = ArraySize(m_layers);
+      if(vol_sum > 0.0)
+        {
+         m_c.total_volume = vol_sum;
+         m_c.avg_price    = cost / vol_sum;
+        }
+
       m_c.recovered    = false;
       m_uncertain      = false;
       m_uncertain_text = "";
