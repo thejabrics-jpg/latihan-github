@@ -209,7 +209,10 @@ public:
               {
                double need = target - m_net_pl;
                pts         = need / mpp;
-               m_tp_price  = CloseRefPrice() + pts * m_spec.Point();
+               // BUY profit increases when Bid rises; SELL profit increases when Ask falls.
+               // The cost-aware distance must therefore point in the profit direction.
+               m_tp_price  = (IsBuy() ? CloseRefPrice() + pts * m_spec.Point()
+                                     : CloseRefPrice() - pts * m_spec.Point());
                anchor      = CloseRefPrice();
                m_tp_note   = StringFormat("cost aware, %.1f pts from current close price", pts);
               }
