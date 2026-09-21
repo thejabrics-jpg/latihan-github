@@ -944,6 +944,12 @@ void Notify(const string text)
 /// Cooldown bookkeeping + engine side reaction after a finished cycle.
 void OnCycleFinished(const int exit_code, const string reason, const double net_pl)
   {
+   // Capture the close snapshot BEFORE clearing the notice flag. Reconcile()
+   // retires the live cycle to zero positions before this callback runs.
+   bool   had_close_notice = g_close_notice_set;
+   int    closed_layers    = (had_close_notice ? g_close_notice_layers : g_cycle.LayerCount());
+   double closed_volume    = (had_close_notice ? g_close_notice_volume : g_cycle.TotalVolume());
+   double closed_avg       = (had_close_notice ? g_close_notice_avg : g_cycle.AvgPrice());
    g_close_notice_set = false;
    int minutes = 0;
    if(exit_code == 1)
@@ -955,9 +961,6 @@ void OnCycleFinished(const int exit_code, const string reason, const double net_
       g_rt.next_entry_allowed_at = XauNow() + (datetime)(minutes * 60);
    if(g_cfg.RequireNewSignalAfterCycleClose)
       g_entry.ResetState(true);
-   int    closed_layers = (g_close_notice_set ? g_close_notice_layers : g_cycle.LayerCount());
-   double closed_volume = (g_close_notice_set ? g_close_notice_volume : g_cycle.TotalVolume());
-   double closed_avg    = (g_close_notice_set ? g_close_notice_avg : g_cycle.AvgPrice());
    g_stats.RegisterCycleEnd(g_cycle.CycleId(), exit_code, net_pl);
    g_closing_basket = false;
    g_sm.SetClosing(false);
