@@ -991,12 +991,9 @@ bool CloseBasket(const int exit_code, const string reason)
    g_closing_basket = true;
    g_sm.SetClosing(true);
    double net_before = g_basket.NetPL();
-   int left = g_basket.CloseAllLayers(exit_code, reason);
-   g_sm.SetClosing(false);
-   g_closing_basket = false;
-   // Preserve the close intent and the pre-close basket snapshot even when
-   // the execution layer reports a stale position count for one tick. The
-   // next Reconcile() may retire the cycle before OnCycleFinished() runs.
+   // Capture the basket snapshot BEFORE CloseAllLayers(). A direct/instant
+   // close can call CCycleManager::MarkClosed(), which resets live layer
+   // totals to zero before OnCycleFinished() gets control.
    if(!g_close_notice_set)
      {
       g_close_notice_set    = true;
@@ -1007,6 +1004,9 @@ bool CloseBasket(const int exit_code, const string reason)
       g_close_notice_volume = g_cycle.TotalVolume();
       g_close_notice_avg    = g_cycle.AvgPrice();
      }
+   int left = g_basket.CloseAllLayers(exit_code, reason);
+   g_sm.SetClosing(false);
+   g_closing_basket = false;
    if(left == 0)
      {
       // OnTick() observes the open->flat transition and calls
