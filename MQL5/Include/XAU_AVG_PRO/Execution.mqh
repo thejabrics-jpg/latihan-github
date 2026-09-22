@@ -131,6 +131,30 @@ private:
       return(ticket_out > 0);
      }
 
+   /// Read the authoritative fill details from the deal history.
+   /// This is especially important on NETTING accounts: POSITION_VOLUME is
+   /// the merged basket volume, not the volume of the individual fill/layer.
+   bool DealFillDetails(const long deal, const bool is_buy,
+                        double &price_out, double &volume_out, datetime &time_out)
+     {
+      price_out  = 0.0;
+      volume_out = 0.0;
+      time_out   = 0;
+      if(deal <= 0 || !HistoryDealSelect((ulong)deal))
+         return(false);
+      if(HistoryDealGetString((ulong)deal, DEAL_SYMBOL) != m_spec.Symbol())
+         return(false);
+      if((long)HistoryDealGetInteger((ulong)deal, DEAL_MAGIC) != m_cfg.MagicNumber)
+         return(false);
+      ENUM_DEAL_TYPE dt = (ENUM_DEAL_TYPE)HistoryDealGetInteger((ulong)deal, DEAL_TYPE);
+      if(dt != (is_buy ? DEAL_TYPE_BUY : DEAL_TYPE_SELL))
+         return(false);
+      price_out  = HistoryDealGetDouble((ulong)deal, DEAL_PRICE);
+      volume_out = HistoryDealGetDouble((ulong)deal, DEAL_VOLUME);
+      time_out   = (datetime)HistoryDealGetInteger((ulong)deal, DEAL_TIME);
+      return(price_out > 0.0 && volume_out > 0.0);
+     }
+
    void SleepMs(const int ms)
      {
       // Sleep() is ignored inside the Strategy Tester, which is exactly
@@ -245,11 +269,26 @@ public:
               {
                if(FindResult(is_buy, volume, before, tk, fp, fv, ft))
                  {
+                  // MqlTradeResult::price/volume are broker-confirmed DEAL
+                  // values. On NETTING, the visible position volume is the
+                  // merged basket volume and must never be recorded as one
+                  // layer. Prefer the deal history when it is available.
+                  double deal_price = 0.0;
+                  double deal_volume = 0.0;
+                  datetime deal_time = 0;
+                  bool have_deal = DealFillDetails(r.deal, is_buy, deal_price, deal_volume, deal_time);
                   r.ok        = true;
                   r.ticket    = tk;
-                  r.price     = (res.price > 0.0 ? res.price : fp);
-                  r.volume    = fv;
-                  r.time      = (ft > 0 ? ft : XauNow());
+                  r.price     = (have_deal ? deal_price : (res.price > 0.0 ? res.price : fp));
+                  if(res.volume > 0.0)
+                     r.volume = res.volume;
+                  else if(have_deal)
+                     r.volume = deal_volume;
+                  else if(m_spec.IsHedgingAccount())
+                     r.volume = fv;
+                  else
+                     r.volume = expected_volume; // netting fallback: requested layer size
+                  r.time      = (have_deal && deal_time > 0 ? deal_time : (ft > 0 ? ft : XauNow()));
                   r.retcode   = retcode;
                   r.text      = last_text;
                   m_ok++;
