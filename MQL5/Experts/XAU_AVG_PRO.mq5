@@ -1174,7 +1174,11 @@ void TryAverage(void)
       g_cycle.NoteFill(r.ticket, r.volume > 0.0 ? r.volume : lot,
                        r.price > 0.0 ? r.price : price, when);
       g_stats.RegisterAveraging();
-      // Record the ACTUAL verified fill price, not the requested level.\n      // Slippage/fill differences can otherwise make the next level look\n      // like a duplicate even though the broker filled at a different price.\n      double opened_level = (r.price > 0.0 ? r.price : price);\n      g_avg.NoteLayerOpened(opened_level, g_rt.bar_time, g_rt);
+      // Record the ACTUAL verified fill price, not the requested level.
+      // Slippage/fill differences can otherwise make the next level look
+      // like a duplicate even though the broker filled at a different price.
+      double opened_level = (r.price > 0.0 ? r.price : price);
+      g_avg.NoteLayerOpened(opened_level, g_rt.bar_time, g_rt);
       g_log.Info(XAU_T_AVG, StringFormat("LAYER %d opened | ticket=%s lot=%.2f price=%s level=%s dist=%.0f pts | basket: vol=%s avg=%s | float=%s | cycle #%d",
                                          g_cycle.LayerCount(), IntegerToString(r.ticket), lot,
                                          XauPrice(r.price > 0 ? r.price : price), XauPrice(plan.level),
